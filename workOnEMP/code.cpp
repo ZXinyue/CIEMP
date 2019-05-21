@@ -12,8 +12,8 @@
 #include <vector>
 using namespace std;
 
-#define POOL 10
-#define RETURN_NUM 2
+#define POOL 23
+#define RETURN_NUM 5
 
 
 typedef struct
@@ -26,9 +26,9 @@ typedef struct
 	
 }Tile;
 
-int size = 25;
-int width = 5;
-Tile tiles[25];
+int size = 16;
+int width = 4;
+Tile tiles[16];
 map<string,int> edgeVote;
 int* answer;
 
@@ -69,22 +69,22 @@ int main()
 			if(t1.top == t2.bottom)
 			{
 				tempEdge = to_string(t2.id)+"T-B"+to_string(t1.id);
-				edgeVote[tempEdge] = 0;
+				edgeVote[tempEdge] = 1;
 			}
 			if(t1.bottom == t2.top)
 			{
 				tempEdge = to_string(t1.id)+"T-B"+to_string(t2.id);
-				edgeVote[tempEdge] = 0;
+				edgeVote[tempEdge] = 1;
 			}
 			if(t1.left == t2.right)
 			{
 				tempEdge = to_string(t2.id)+"L-R"+to_string(t1.id);
-				edgeVote[tempEdge] = 0;
+				edgeVote[tempEdge] = 1;
 			}
 			if(t1.right == t2.left)
 			{
 				tempEdge = to_string(t1.id)+"L-R"+to_string(t2.id);
-				edgeVote[tempEdge] = 0;
+				edgeVote[tempEdge] = 1;
 			}
 		}
 
@@ -173,13 +173,15 @@ void* searchAnswer(void *id)
 	for(int i=0; i<size; i++)
 		used[i]=false;
 
-	long seed = time(NULL);
-	srand(seed+ *(int*)id * 12345);
+	long Seed = time(NULL);
+	srand(Seed+ *(int*)id * 12345);
 	int randomStart = rand()%size;
-	cout<<"the thread"<<*(int*)id<<"randomStart is:  "<<randomStart<<endl;
+	//cout<<"the thread"<<*(int*)id<<"randomStart is:  "<<randomStart<<endl;
 	tempAnswer[0] = randomStart;
 	used[randomStart] = true;
 	
+	
+
 	while(1)
 	{
 		if(answer[0]!=-1)
@@ -187,13 +189,14 @@ void* searchAnswer(void *id)
 
 		if(tempAnswer[0] == -1)
 		{
-			seed = time(NULL);
-			srand(seed+ *(int*)id * 12345);
+			Seed = time(NULL);
+			srand(Seed+ *(int*)id * 12345);
 			randomStart = rand()%size;
 			tempAnswer[0] = randomStart;
 			used[randomStart] = true;
 			//cout<<"new randomStart "<< *(int*)id <<" is!--"<<randomStart<<endl;
 		}
+
 		bool *returnStatus = BFS(tempAnswer, flag, returnTime, used, 0);
 		// cout<<"returnStatus is:"<<*returnStatus<<endl;
 		if(*returnStatus)
@@ -285,13 +288,13 @@ bool* BFS(int *tempAnswer, bool *flag, int *returnTime, bool *used, int pos)
 {
 	//cout<<"hi BFS"<<endl;
 	bool RS = true;
-	bool *rs = &RS;
 	int startx = pos/width;
 	int starty = pos%width;
 	queue<int> xq;
 	queue<int> yq;
 	xq.push(startx);
 	yq.push(starty);
+	long seed = time(NULL);
 	while(!xq.empty()&&!yq.empty())
 	{
 		//cout<<"hi loop in queue"<<endl;
@@ -300,7 +303,7 @@ bool* BFS(int *tempAnswer, bool *flag, int *returnTime, bool *used, int pos)
 		xq.pop();
 		yq.pop();
 
-		cout<<"x"<<x<<"y"<<y<<endl;
+		//cout<<"x"<<x<<"y"<<y<<endl;
 
 		if(flag[x*width+y])
 			continue;
@@ -342,19 +345,22 @@ bool* BFS(int *tempAnswer, bool *flag, int *returnTime, bool *used, int pos)
 		if(x+1<width && tempAnswer[(x+1)*width+y]!=-1)
 			bottomTileId = tempAnswer[(x+1)*width+y];
 		string shead;
-		cout<<"l: "<<leftTileId<<" r: "<<rightTileId<< " t: "<<topTileId<< " p: "<<bottomTileId<< endl;
-		if(leftTileId!=-1)
+		string rs,ls,ts,bs;
+		map <int,double> candidates;
+		//cout<<"l: "<<leftTileId<<" r: "<<rightTileId<< " t: "<<topTileId<< " p: "<<bottomTileId<< endl;
+		if(leftTileId != -1)
 		{
 			shead = to_string(leftTileId)+"L-R";
 			leftTile = tiles[leftTileId];
-			multimap <int,int> candidates;
 			map<string,int>::iterator iter;
 		    iter = edgeVote.begin();
-		    while(iter != edgeVote.end()) {
+		    while(iter != edgeVote.end()) 
+		    {
 		    	string::size_type position;
 		    	position = iter->first.find(shead);
 		        if(position == 0)
 		        {
+		        	double sscore = 0;
 		        	bool valid = true;
 		        	int candidateId = stoi(iter->first.substr(shead.length()));
 		        	if(used[candidateId])
@@ -369,6 +375,11 @@ bool* BFS(int *tempAnswer, bool *flag, int *returnTime, bool *used, int pos)
 		        		if(rightTile.left != canTile.right)
 		        		{
 		        			valid = false;
+		        		}
+		        		else
+		        		{
+		        			rs = to_string(candidateId)+"L-R"+to_string(rightTileId);
+		        			sscore+=edgeVote[rs];
 		        		}
 
 		        	}
@@ -379,6 +390,11 @@ bool* BFS(int *tempAnswer, bool *flag, int *returnTime, bool *used, int pos)
 		        		{
 		        			valid = false;
 		        		}
+		        		else
+		        		{
+		        			ts = to_string(topTileId)+"T-B"+to_string(candidateId);
+		        			sscore+=edgeVote[ts];
+		        		}
 		        	}
 		        	if(bottomTileId!=-1)
 		        	{
@@ -387,83 +403,39 @@ bool* BFS(int *tempAnswer, bool *flag, int *returnTime, bool *used, int pos)
 		        		{
 		        			valid = false;
 		        		}
+		        		else
+		        		{
+		        			bs = to_string(candidateId)+"T-B"+to_string(bottomTileId);
+		        			sscore+=edgeVote[bs];
+
+		        		}
 		        	}
 		        	if(valid)
 		        	{
-		        		int sscore = iter->second;
-		        		candidates.insert(make_pair(sscore,candidateId));
+		        		sscore += iter->second;
+		        		candidates.insert(make_pair(candidateId,sscore));
 		        	}
 
 		        }
 		        iter++;
 		    }
-		    if(!candidates.empty())
-		    {
-		    	int winnerId = candidates.begin()->second;
-		    	tempAnswer[x*width+y]=winnerId;
-		    	used[winnerId] = true;
-		    	cout<<"winnerId:"<<winnerId<<endl;
-		    	int score = candidates.begin()->first+1;
-		    	string tempEdge = shead+to_string(winnerId);
-		    	pthread_mutex_lock(&mutex1);
-		    	edgeVote[tempEdge] = score;
-		    	//cout<<"add score"<<endl;
-		    	pthread_mutex_unlock(&mutex1);
-		    }
-		    else
-		    {
-		    	// cout<<"failed tempAnswer is:"<<endl;
-		    	// for(int i=0; i<size; i++)
-		    	// 	cout<<tempAnswer[i]<<" ";
-		    	// cout<<"edgevote this time:"<<endl;
-		    	// map<string,int>::iterator iter;
-		    	//     iter = edgeVote.begin();
-		    	//     while(iter != edgeVote.end()) {
-		    	//         cout << iter->first << " : " << iter->second << endl;
-		    	//         iter++;
-		    	//     }
-
-
-
-		    	for(int i=0; i<size; i++)
-		    		flag[i]=false;
-
-
-		    	// long seed = time(NULL);
-		    	// //srand(seed+(int)id*12345);
-		    	// int randomStart = rand()%size;
-		    	// tempAnswer[0] = randomStart;
-		    	// used[randomStart] = true;
-
-		    	//backTrack
-		    	int *px = &x;
-		    	int *py = &y;
-		    	backTrack(px,py,tempAnswer,returnTime,used);
-
-
-
-
-		    	*rs = false;
-		    	return rs;
-
-		    }
+		    
 		}
-		else if(topTileId!=-1)
+		else if(topTileId != -1)
 		{
 			shead = to_string(topTileId)+"T-B";
 			topTile = tiles[topTileId];
-			multimap <int,int> candidates;
 			map<string,int>::iterator iter;
 		    iter = edgeVote.begin();
-		    while(iter != edgeVote.end()) {
+		    while(iter != edgeVote.end()) 
+		    {
 		    	string::size_type position;
 		    	position = iter->first.find(shead);
-		    	cout<<"edge is"<<iter->first<<endl;
 		        if(position == 0)
 		        {
+		        	double sscore = 0;
 		        	bool valid = true;
 		        	int candidateId = stoi(iter->first.substr(shead.length()));
-		        	cout<<"candidateId"<<candidateId<<endl;
 		        	if(used[candidateId])
 		        	{
 		        		iter++;
@@ -477,6 +449,11 @@ bool* BFS(int *tempAnswer, bool *flag, int *returnTime, bool *used, int pos)
 		        		{
 		        			valid = false;
 		        		}
+		        		else
+		        		{
+		        			rs = to_string(candidateId)+"L-R"+to_string(rightTileId);
+		        			sscore+=edgeVote[rs];
+		        		}
 
 		        	}
 		        	if(leftTileId!=-1)
@@ -486,6 +463,11 @@ bool* BFS(int *tempAnswer, bool *flag, int *returnTime, bool *used, int pos)
 		        		{
 		        			valid = false;
 		        		}
+		        		else
+		        		{
+		        			ls = to_string(leftTileId)+"L-R"+to_string(candidateId);
+		        			sscore+=edgeVote[ls];
+		        		}
 		        	}
 		        	if(bottomTileId!=-1)
 		        	{
@@ -494,68 +476,309 @@ bool* BFS(int *tempAnswer, bool *flag, int *returnTime, bool *used, int pos)
 		        		{
 		        			valid = false;
 		        		}
+		        		else
+		        		{
+		        			bs = to_string(candidateId)+"T-B"+to_string(bottomTileId);
+		        			sscore+=edgeVote[bs];
+
+		        		}
 		        	}
 		        	if(valid)
 		        	{
-		        		int sscore = iter->second;
-		        		candidates.insert(make_pair(sscore,candidateId));
+		        		sscore += iter->second;
+		        		candidates.insert(make_pair(candidateId,sscore));
 		        	}
 
 		        }
 		        iter++;
 		    }
-		    if(!candidates.empty())
-		    {
-		    	int winnerId = candidates.begin()->second;
-		    	tempAnswer[x*width+y]=winnerId;
-		    	cout<<"winnerId:"<<winnerId<<endl;
-		    	used[winnerId] = true;
-		    	int score = candidates.begin()->first+1;
-		    	string tempEdge = shead+to_string(winnerId);
-		    	pthread_mutex_lock(&mutex1);
-		    	edgeVote[tempEdge] = score;
-		    	//cout<<"add score"<<endl;
-		    	pthread_mutex_unlock(&mutex1);
-		    }
-		    else
-		    {
-		    	// cout<<"failed tempAnswer is:"<<endl;
-		    	// for(int i=0; i<size; i++)
-		    	// 	cout<<tempAnswer[i]<<" ";
-
-		    	// cout<<"edgevote this time:"<<endl;
-		    	// map<string,int>::iterator iter;
-		    	//     iter = edgeVote.begin();
-		    	//     while(iter != edgeVote.end()) {
-		    	//         cout << iter->first << " : " << iter->second << endl;
-		    	//         iter++;
-		    	//     }
-
-
-		    	for(int i=0; i<size; i++)
-		    		flag[i]=false;
-
-		    	// long seed = time(NULL);
-		    	// //srand(seed+(int)id*12345);
-		    	// int randomStart = rand()%size;
-		    	// tempAnswer[0] = randomStart;
-		    	// used[randomStart] = true;
-
-		    	int *px = &x;
-		    	int *py = &y;
-		    	backTrack(px,py,tempAnswer,returnTime,used);
-
-
-		    	*rs = false;
-		    	return rs;
-
-				
-			}
 		}
+		else if(rightTileId != -1)
+		{
+			shead = "L-R"+to_string(rightTileId);
+			rightTile = tiles[rightTileId];
+			map<string,int>::iterator iter;
+		    iter = edgeVote.begin();
+		    while(iter != edgeVote.end()) 
+		    {
+		    	string::size_type position;
+		    	position = iter->first.find(shead);
+		        if(position + shead.length() == iter->first.length())
+		        {
+		        	double sscore = 0;
+		        	bool valid = true;
+		        	int candidateId = stoi(iter->first.substr(0,position));
+		        	if(used[candidateId])
+		        	{
+		        		iter++;
+		        		continue;
+		        	}
+		        	Tile canTile = tiles[candidateId];
+		        	if(topTileId!=-1)
+		        	{
+		        		topTile = tiles[topTileId];
+		        		if(topTile.bottom != canTile.top)
+		        		{
+		        			valid = false;
+		        		}
+		        		else
+		        		{
+		        			ts = to_string(topTileId)+"T-B"+to_string(candidateId);
+		        			sscore+=edgeVote[ts];
+		        		}
 
+		        	}
+		        	if(leftTileId!=-1)
+		        	{
+		        		leftTile = tiles[leftTileId];
+		        		if(leftTile.right != canTile.left)
+		        		{
+		        			valid = false;
+		        		}
+		        		else
+		        		{
+		        			ls = to_string(leftTileId)+"L-R"+to_string(candidateId);
+		        			sscore+=edgeVote[ls];
+		        		}
+		        	}
+		        	if(bottomTileId!=-1)
+		        	{
+		        		bottomTile = tiles[bottomTileId];
+		        		if(bottomTile.top != canTile.bottom)
+		        		{
+		        			valid = false;
+		        		}
+		        		else
+		        		{
+		        			bs = to_string(candidateId)+"T-B"+to_string(bottomTileId);
+		        			sscore+=edgeVote[bs];
 
+		        		}
+		        	}
+		        	if(valid)
+		        	{
+		        		sscore += iter->second;
+		        		candidates.insert(make_pair(candidateId,sscore));
+		        	}
+
+		        }
+		        iter++;
+		    }
+		}
+		else if(bottomTileId != -1)
+		{
+			shead = "T-B"+to_string(bottomTileId);
+			bottomTile = tiles[bottomTileId];
+			map<string,int>::iterator iter;
+		    iter = edgeVote.begin();
+		    while(iter != edgeVote.end()) 
+		    {
+		    	string::size_type position;
+		    	position = iter->first.find(shead);
+		        if(position + shead.length() == iter->first.length())
+		        {
+		        	double sscore = 0;
+		        	bool valid = true;
+		        	int candidateId = stoi(iter->first.substr(0,position));
+		        	if(used[candidateId])
+		        	{
+		        		iter++;
+		        		continue;
+		        	}
+		        	Tile canTile = tiles[candidateId];
+		        	if(topTileId!=-1)
+		        	{
+		        		topTile = tiles[topTileId];
+		        		if(topTile.bottom != canTile.top)
+		        		{
+		        			valid = false;
+		        		}
+		        		else
+		        		{
+		        			ts = to_string(topTileId)+"T-B"+to_string(candidateId);
+		        			sscore+=edgeVote[ts];
+		        		}
+
+		        	}
+		        	if(leftTileId!=-1)
+		        	{
+		        		leftTile = tiles[leftTileId];
+		        		if(leftTile.right != canTile.left)
+		        		{
+		        			valid = false;
+		        		}
+		        		else
+		        		{
+		        			ls = to_string(leftTileId)+"L-R"+to_string(candidateId);
+		        			sscore+=edgeVote[ls];
+		        		}
+		        	}
+		        	if(rightTileId!=-1)
+		        	{
+		        		rightTile = tiles[rightTileId];
+		        		if(rightTile.left != canTile.right)
+		        		{
+		        			valid = false;
+		        		}
+		        		else
+		        		{
+		        			rs = to_string(candidateId)+"L-R"+to_string(rightTileId);
+		        			sscore+=edgeVote[rs];
+
+		        		}
+		        	}
+		        	if(valid)
+		        	{
+		        		sscore += iter->second;
+		        		candidates.insert(make_pair(candidateId,sscore));
+		        	}
+
+		        }
+		        iter++;
+		    }
+		}
+		// else
+		// {
+		// 	srand(seed);
+		// 	//seed = rand();
+		// 	//cout<<"same seed111??"<<seed<<endl;
+		// 	// cout<<"same rand??"<<rand()<<endl;
+		// 	int randomSelect = rand()%size;
+		// 	while(used[randomSelect])
+		// 		randomSelect = rand()%size;
+		// 	tempAnswer[x*width+y]=randomSelect;
+		// 	//cout<<"x:"<<x<<" y:"<<y<<" randomSelect is"<<randomSelect<<endl;
+		// 	used[randomSelect] = true;
+		// 	continue;
+		// }
+
+	    if(!candidates.empty())
+	    {
+	    	double sum = 0;
+	    	map<int,double>::iterator it;
+
+	    	//概率选取
+	    	/*
+	    	it = candidates.begin();
+	    	while(it != candidates.end())
+	    	{
+	    		it->second = 1/it->second;
+	    		sum+=it->second;
+	    		it++;
+	    	}
+
+	    	it = candidates.begin();
+	    	while(it != candidates.end())
+	    	{
+	    		it->second = it->second/sum;
+	    		it++;
+	    	}
+
+	    	srand(seed); 
+	    	seed = rand();
+	    	
+	    	double rnd = rand() / double(RAND_MAX);
+
+	    	int winnerId;
+
+	    	it = candidates.begin(); 
+	    	while(it != candidates.end())
+	    	{
+	    		rnd -= it->second;
+	    		if(rnd < 0)
+	    		{
+	    			winnerId = it->first;
+	    			break;
+	    		}
+	    		it++;
+	    	}
+			*/
+
+			//选择最小
+			
+			it = candidates.begin();
+			int winnerId = it->first;
+			int minscore = it->second;
+			while(it != candidates.end())
+			{
+				//cout<<"candidates"<<it->first<<" "<<it->second<<endl;
+				if(it->second<minscore)
+				{
+					minscore = it->second;
+					winnerId = it->first;
+				}
+				it++;
+			}
+			
+	    	
+	    	tempAnswer[x*width+y]=winnerId;
+	    	// for(int i=0;i<size;i++)
+	    	// 	cout<<tempAnswer[i]<<" ";
+	    	// cout<<endl;
+	    	// cout<<"x:"<<x<<"y:"<<y<<endl;
+	    	
+	    	used[winnerId] = true;
+	    	//cout<<"winnerId:"<<winnerId<<endl;
+	    	pthread_mutex_lock(&mutex1);
+	    	if(leftTileId != -1)
+	    	{
+	    		ls = to_string(leftTileId)+"L-R"+to_string(winnerId);
+	    		edgeVote[ls] += 1;
+	    	}
+	    	if(rightTileId != -1)
+	    	{
+	    		rs = to_string(winnerId)+"L-R"+to_string(rightTileId);
+	    		edgeVote[rs] += 1;
+	    	}
+	    	if(topTileId != -1)
+	    	{
+	    		ts = to_string(topTileId)+"T-B"+to_string(winnerId);
+	    		edgeVote[ts] += 1;
+	    	}
+	    	if(bottomTileId != -1)
+	    	{
+	    		bs = to_string(winnerId)+"T-B"+to_string(bottomTileId);
+	    		edgeVote[bs] += 1;
+	    	}
+	    	pthread_mutex_unlock(&mutex1);
+	    	
+	    }
+	    else
+	    {
+	    	// cout<<"failed tempAnswer is:"<<endl;
+	    	// for(int i=0; i<size; i++)
+	    	// 	cout<<tempAnswer[i]<<" ";
+	    	// cout<<"edgeVote this time:"<<endl;
+	    	// map<string,int>::iterator iter;
+	    	//     iter = edgeVote.begin();
+	    	//     while(iter != edgeVote.end()) {
+	    	//         cout << iter->first << " : " << iter->second << endl;
+	    	//         iter++;
+	    	//     }
+
+	    	for(int i=0; i<size; i++)
+	    		flag[i]=false;
+
+	    	// long seed = time(NULL);
+	    	// //srand(seed+(int)id*12345);
+	    	// int randomStart = rand()%size;
+	    	// tempAnswer[0] = randomStart;
+	    	// used[randomStart] = true;
+
+	    	//backTrack
+	    	int *px = &x;
+	    	int *py = &y;
+	    	backTrack(px,py,tempAnswer,returnTime,used);
+
+	    	RS = false;
+	    	bool* rs = &RS;
+	    	return rs;
+
+	    }
 	}
-	*rs = true;
+	RS = true;
+	bool* rs = &RS;
 	return rs;
 }
+
 
