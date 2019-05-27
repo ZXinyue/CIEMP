@@ -41,9 +41,9 @@ struct Pos
 
 
 
-int size = 16;
-int width = 4;
-Tile tiles[16];
+int size = 36;
+int width = 6;
+Tile tiles[36];
 map<string,int> edgeVote;
 int* answer;
 
@@ -216,21 +216,30 @@ void* searchAnswer(void *id)
 		// }
 
 		int BFSStart = -1;
+		vector<int> validArray;
 		for(int i=0; i<size; i++)
 		{
 			if(tempAnswer[i]!=-1)
 			{
-				BFSStart = i;
-				break;
+				validArray.push_back(i);
 			}
 		}
-		if(BFSStart == -1)
+
+
+		if(validArray.empty())
 		{
 			srand(seed);
 			BFSStart = rand()%size;
 			randomStart = rand()%size;
 			tempAnswer[BFSStart] = randomStart;
 			used[randomStart] = true;
+			seed = rand();
+		}
+		else
+		{
+			srand(seed);
+			int randomIndex = rand()%validArray.size();
+			BFSStart = validArray[randomIndex];
 			seed = rand();
 		}
 		int *pStart = &BFSStart;
@@ -261,15 +270,27 @@ void* backTrack(int *px, int *py, int *tempAnswer,int *returnTime, bool *used)
 
 	if(x-1>=0 && tempAnswer[(x-1)*width+y]!=-1) //top
 	{
+		
 		used[tempAnswer[(x-1)*width+y]] = false;
-		returnTime[(x-1)*width+y] += 1;
 		tempAnswer[(x-1)*width+y] = -1;
+
+		int x_ = x-1;
+		int *px_ = &x_;
+		int *py_ = py;
+		// int leftTileId = -1;
+		// int rightTileId = -1;
+		// int topTileId = -1;
+		// int bottomTileId = -1;
+		// map<int,double> topCandidates;
+		// findCandidates(px,py,tempAnswer,topCandidates,leftTileId,rightTileId,topTileId,bottomTileId);
+		
+
+		returnTime[(x-1)*width+y] += 1;
+		
 		if(returnTime[(x-1)*width+y]>=RETURN_NUM)
 		{
 			//cout<<"aaaa"<<endl;
-			int x_ = x-1;
-			int *px_ = &x_;
-			int *py_ = py;
+			
 			returnTime[(x-1)*width+y] = 0;
 			backTrack(px_, py_, tempAnswer,returnTime, used);
 		}
