@@ -10,10 +10,11 @@
 #include <map>
 #include <queue>
 #include <vector>
+#include <set>
 #include <functional>
 using namespace std;
 
-#define POOL 23
+#define POOL 40
 #define RETURN_NUM 5
 
 
@@ -52,7 +53,7 @@ bool* BFS(int *tempAnswer, bool *flag, int *returnTime, bool *used, int *pPos, l
 void* backTrack(int *px, int *py, int *tempAnswer,int *returnTime, bool *used);
 void* justTest(void *id);
 void* findCandidates(int *px, int *py, int *tempAnswer, map<int,double> &candidates, int &leftTileId, int &rightTileId, int &topTileId, int &bottomTileId);
-
+void* backTrack2(int *px, int *py, int *tempAnswer,bool *used, long *pSeed);
 
 
 //pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -344,6 +345,421 @@ void* backTrack(int *px, int *py, int *tempAnswer,int *returnTime, bool *used)
 	return NULL;	
 }
 
+void* backTrack2(int *px, int *py, int *tempAnswer,bool *used, long *pSeed)
+{
+	map<int,double> topCandidates;
+	map<int,double> rightCandidates;
+	map<int,double> bottomCandidates;
+	map<int,double> leftCandidates;
+	int x = *px;
+	int y = *py;
+	long seed = *pSeed;
+	int direIds[4];
+	for(int i=0;i<4;i++)
+		direIds[i] = -1;
+
+	int x_ = x-1;
+	int *px_ = &x_;
+	int y_ = y-1;
+	int *py_ = &y_;
+	int _x = x+1;
+	int *p_x = &_x;
+	int _y = y+1;
+	int *p_y = &_y;
+
+	int aroundId[16];
+	for(int i=0; i<16; i++)
+		aroundId[i]=-1;
+	//self
+	if(tempAnswer[x*width+y] != -1)
+	{
+		int theId = tempAnswer[x*width+y];
+		used[theId] = false;
+		tempAnswer[x*width+y] = -1;
+	}
+	//top
+	if(x_>=0 && tempAnswer[x_*width+y]!=-1)
+	{
+		direIds[0] = tempAnswer[x_*width+y];
+		findCandidates(px_,py,tempAnswer,topCandidates,aroundId[3],aroundId[1],aroundId[0],aroundId[2]);
+		//cout<<"topCandidatesSize!!"<<topCandidates.size()<<endl;
+	}
+	//right
+	if(_y<width && tempAnswer[x*width+_y] != -1)
+	{
+		direIds[1] = tempAnswer[x*width+_y];
+		findCandidates(px,p_y,tempAnswer,rightCandidates,aroundId[7],aroundId[5],aroundId[4],aroundId[6]);
+	}
+	//bottom
+	if(_x<width && tempAnswer[_x*width+y] != -1)
+	{
+		direIds[2] = tempAnswer[_x*width+y];
+		findCandidates(p_x,py,tempAnswer,bottomCandidates,aroundId[11],aroundId[9],aroundId[8],aroundId[10]);
+	}
+	//left
+	if(y_>=0 && tempAnswer[x*width+y_] != -1)
+	{
+		direIds[3] = tempAnswer[x*width+y_];
+		findCandidates(px,py_,tempAnswer,leftCandidates,aroundId[15],aroundId[13],aroundId[12],aroundId[14]);
+	}
+	vector<int> direCan;
+	set<int> directions;
+	for(int i=0;i<4;i++)
+	{
+		if(direIds[i] != -1)
+		{
+			direCan.push_back(i);
+		}
+	}
+	if(direCan.size() == 0)
+	{
+		return NULL;
+	}
+	// cout<<"x:"<<x_<<" y:"<<y<<" upTile:"<<direIds[0]<<endl;
+	// if(x_-1>=0)
+	// 	cout<<"up here:"<<tempAnswer[(x_-1)*width+y]<<endl;
+	// if(y-1>=0)
+	// 	cout<<"left here:"<<tempAnswer[x_*width+y-1]<<endl;
+	// if(y+1<width)
+	// 	cout<<"right here:"<<tempAnswer[x_*width+y+1]<<endl;
+	// cout<<"------------"<<endl;
+	// cout<<aroundId[3]<<" "<<aroundId[1]<<" "<<aroundId[0]<<" "<<aroundId[2]<<endl;
+	// cout<<"------------"<<endl;
+
+	// cout<<"cansize"<<topCandidates.size()<<endl;
+
+
+	srand(seed);
+	int backTrackDireNum = rand()%direCan.size()+1;
+	seed = rand();
+
+	while(directions.size()!= backTrackDireNum)
+	{
+		srand(seed);
+		int tempIndex = rand()%direCan.size();
+		directions.insert(direCan[tempIndex]);
+		seed = rand();
+	}
+
+	//backtrack top
+	if(directions.count(0) == 1)
+	{
+		used[direIds[0]] = false;
+		tempAnswer[x_*width+y] = -1;
+		if(topCandidates.size() <= 1)
+		{
+			// pSeed = &seed;
+			// backTrack2(px_,py,tempAnswer,used,pSeed);
+		}
+		else
+		{
+			map<int,double>::iterator it;
+			it = topCandidates.begin();
+			int minscore = -1;
+			int winnerId = -1;
+			while(it!=topCandidates.end())
+			{
+				if(it->first == direIds[0])
+				{
+					it++;
+					continue;
+				}
+				if(minscore == -1)
+				{
+					minscore = it->second;
+					winnerId = it->first;
+				}
+				else if(it->second<minscore)
+				{
+					minscore = it->second;
+					winnerId = it->first;
+				}
+				it++;
+			}
+			//cout<<"x:"<<x_<<" y:"<<y<<"..........................winnerId:"<<winnerId<<endl;
+			if(!used[winnerId])
+			{
+				used[winnerId] = true;
+				tempAnswer[x_*width+y] = winnerId;
+			}
+			else
+			{
+				for(int i=0;i<size;i++)
+				{
+					if(tempAnswer[i]==winnerId)
+					{
+						tempAnswer[i]=-1;
+						used[winnerId]=false;
+						break;
+					}
+				}
+				used[winnerId] = true;
+				tempAnswer[x_*width+y] = winnerId;
+			}
+			pthread_mutex_lock(&mutex1);
+			if(aroundId[3] != -1)
+			{
+				string ls = to_string(aroundId[3])+"L-R"+to_string(winnerId);
+				edgeVote[ls] += 1;
+			}
+			if(aroundId[1] != -1)
+			{
+				string rs = to_string(winnerId)+"L-R"+to_string(aroundId[1]);
+				edgeVote[rs] += 1;
+			}
+			if(aroundId[0] != -1)
+			{
+				string ts = to_string(aroundId[0])+"T-B"+to_string(winnerId);
+				edgeVote[ts] += 1;
+			}
+			if(aroundId[2] != -1)
+			{
+				string bs = to_string(winnerId)+"T-B"+to_string(aroundId[2]);
+				edgeVote[bs] += 1;
+			}
+			pthread_mutex_unlock(&mutex1);
+		}
+	}
+
+	//backtrap right
+	if(directions.count(1) == 1)
+	{
+		used[direIds[1]] = false;
+		tempAnswer[x*width+_y] = -1;
+		if(rightCandidates.size() <= 1)
+		{
+			// pSeed = &seed;
+			// backTrack2(px,p_y,tempAnswer,used,pSeed);
+		}
+		else
+		{
+			map<int,double>::iterator it;
+			it = rightCandidates.begin();
+			int minscore = -1;
+			int winnerId = -1;
+			while(it!=rightCandidates.end())
+			{
+				if(it->first == direIds[1])
+				{
+					it++;
+					continue;
+				}
+				if(minscore == -1)
+				{
+					minscore = it->second;
+					winnerId = it->first;
+				}
+				else if(it->second<minscore)
+				{
+					minscore = it->second;
+					winnerId = it->first;
+				}
+				it++;
+			}
+			if(!used[winnerId])
+			{
+				used[winnerId] = true;
+				tempAnswer[x*width+_y] = winnerId;
+			}
+			else
+			{
+				for(int i=0;i<size;i++)
+				{
+					if(tempAnswer[i]==winnerId)
+					{
+						tempAnswer[i]=-1;
+						used[winnerId]=false;
+						break;
+					}
+				}
+				used[winnerId] = true;
+				tempAnswer[x*width+_y] = winnerId;
+			}
+			pthread_mutex_lock(&mutex1);
+			if(aroundId[7] != -1)
+			{
+				string ls = to_string(aroundId[7])+"L-R"+to_string(winnerId);
+				edgeVote[ls] += 1;
+			}
+			if(aroundId[5] != -1)
+			{
+				string rs = to_string(winnerId)+"L-R"+to_string(aroundId[5]);
+				edgeVote[rs] += 1;
+			}
+			if(aroundId[4] != -1)
+			{
+				string ts = to_string(aroundId[4])+"T-B"+to_string(winnerId);
+				edgeVote[ts] += 1;
+			}
+			if(aroundId[6] != -1)
+			{
+				string bs = to_string(winnerId)+"T-B"+to_string(aroundId[6]);
+				edgeVote[bs] += 1;
+			}
+			pthread_mutex_unlock(&mutex1);
+		}
+	}
+	
+	//backtrap bottom
+	if(directions.count(2) == 1)
+	{
+		used[direIds[2]] = false;
+		tempAnswer[_x*width+y] = -1;
+		if(bottomCandidates.size() <= 1)
+		{
+			// pSeed = &seed;
+			// backTrack2(p_x,py,tempAnswer,used,pSeed);
+		}
+		else
+		{
+			map<int,double>::iterator it;
+			it = bottomCandidates.begin();
+			int minscore = -1;
+			int winnerId = -1;
+			while(it!=bottomCandidates.end())
+			{
+				if(it->first == direIds[2])
+				{
+					it++;
+					continue;
+				}
+				if(minscore == -1)
+				{
+					minscore = it->second;
+					winnerId = it->first;
+				}
+				else if(it->second<minscore)
+				{
+					minscore = it->second;
+					winnerId = it->first;
+				}
+				it++;
+			}
+			if(!used[winnerId])
+			{
+				used[winnerId] = true;
+				tempAnswer[_x*width+y] = winnerId;
+			}
+			else
+			{
+				for(int i=0;i<size;i++)
+				{
+					if(tempAnswer[i]==winnerId)
+					{
+						tempAnswer[i]=-1;
+						used[winnerId]=false;
+						break;
+					}
+				}
+				used[winnerId] = true;
+				tempAnswer[_x*width+y] = winnerId;
+			}
+			pthread_mutex_lock(&mutex1);
+			if(aroundId[11] != -1)
+			{
+				string ls = to_string(aroundId[11])+"L-R"+to_string(winnerId);
+				edgeVote[ls] += 1;
+			}
+			if(aroundId[9] != -1)
+			{
+				string rs = to_string(winnerId)+"L-R"+to_string(aroundId[9]);
+				edgeVote[rs] += 1;
+			}
+			if(aroundId[8] != -1)
+			{
+				string ts = to_string(aroundId[8])+"T-B"+to_string(winnerId);
+				edgeVote[ts] += 1;
+			}
+			if(aroundId[10] != -1)
+			{
+				string bs = to_string(winnerId)+"T-B"+to_string(aroundId[10]);
+				edgeVote[bs] += 1;
+			}
+			pthread_mutex_unlock(&mutex1);
+		}
+	}
+
+	//backtrap left
+	if(directions.count(3) == 1)
+	{
+		used[direIds[3]] = false;
+		tempAnswer[x*width+y_] = -1;
+		if(leftCandidates.size() <= 1)
+		{
+			// pSeed = &seed;
+			// backTrack2(px,py_,tempAnswer,used,pSeed);
+		}
+		else
+		{
+			map<int,double>::iterator it;
+			it = leftCandidates.begin();
+			int minscore = -1;
+			int winnerId = -1;
+			while(it!=leftCandidates.end())
+			{
+				if(it->first == direIds[3])
+				{
+					it++;
+					continue;
+				}
+				if(minscore == -1)
+				{
+					minscore = it->second;
+					winnerId = it->first;
+				}
+				else if(it->second<minscore)
+				{
+					minscore = it->second;
+					winnerId = it->first;
+				}
+				it++;
+			}
+			if(!used[winnerId])
+			{
+				used[winnerId] = true;
+				tempAnswer[x*width+y_] = winnerId;
+			}
+			else
+			{
+				for(int i=0;i<size;i++)
+				{
+					if(tempAnswer[i]==winnerId)
+					{
+						tempAnswer[i]=-1;
+						used[winnerId]=false;
+						break;
+					}
+				}
+				used[winnerId] = true;
+				tempAnswer[x*width+y_] = winnerId;
+			}
+			pthread_mutex_lock(&mutex1);
+			if(aroundId[15] != -1)
+			{
+				string ls = to_string(aroundId[15])+"L-R"+to_string(winnerId);
+				edgeVote[ls] += 1;
+			}
+			if(aroundId[13] != -1)
+			{
+				string rs = to_string(winnerId)+"L-R"+to_string(aroundId[13]);
+				edgeVote[rs] += 1;
+			}
+			if(aroundId[12] != -1)
+			{
+				string ts = to_string(aroundId[12])+"T-B"+to_string(winnerId);
+				edgeVote[ts] += 1;
+			}
+			if(aroundId[14] != -1)
+			{
+				string bs = to_string(winnerId)+"T-B"+to_string(aroundId[14]);
+				edgeVote[bs] += 1;
+			}
+			pthread_mutex_unlock(&mutex1);
+		}
+	}
+	return NULL;
+}
+
 
 bool* BFS(int *tempAnswer, bool *flag, int *returnTime, bool *used, int *pPos, long *pSeed)
 {
@@ -551,7 +967,8 @@ bool* BFS(int *tempAnswer, bool *flag, int *returnTime, bool *used, int *pPos, l
 	    	//backTrack
 	    	int *px = &x;
 	    	int *py = &y;
-	    	backTrack(px,py,tempAnswer,returnTime,used);
+	    	//backTrack(px,py,tempAnswer,returnTime,used);
+	    	backTrack2(px,py,tempAnswer,used,pSeed);
 
 	    	RS = false;
 	    	bool* rs = &RS;
@@ -588,7 +1005,8 @@ void* findCandidates(int *px, int *py, int *tempAnswer, map<int,double> &candida
 	string shead;
 	string rs,ls,ts,bs;
 	
-	//cout<<"l: "<<leftTileId<<" r: "<<rightTileId<< " t: "<<topTileId<< " p: "<<bottomTileId<< endl;
+	// cout<<"x::::"<<x<<" y::::"<<y<<endl;
+	// cout<<"l: "<<leftTileId<<" r: "<<rightTileId<< " t: "<<topTileId<< " p: "<<bottomTileId<<endl;
 	if(leftTileId != -1)
 	{
 		shead = to_string(leftTileId)+"L-R";
@@ -871,6 +1289,7 @@ void* findCandidates(int *px, int *py, int *tempAnswer, map<int,double> &candida
 	        	if(valid)
 	        	{
 	        		sscore += iter->second;
+	        		//cout<<"x:"<<x<<" y:"<<y<<" candidateId here: "<<candidateId<<endl;
 	        		candidates.insert(make_pair(candidateId,sscore));
 	        	}
 
