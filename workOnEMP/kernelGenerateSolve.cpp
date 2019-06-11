@@ -14,7 +14,7 @@
 #include <functional>
 using namespace std;
 
-#define POOL 1
+#define POOL 40
 
 
 typedef struct
@@ -64,10 +64,21 @@ struct candidate
 
 };
 
+struct deadEdge
+{
+	string edge;
+	int score;
+	bool operator < (const deadEdge &e) const
+	{
+		return score < e.score ;
+	}
+};
+
 int size = 25;
 int width = 5;
 Tile tiles[25];
 map<string,int> edgeVote;
+map<string,int> edgeDead;
 int* answer;
 
 void* searchAnswer(void *id);
@@ -114,21 +125,25 @@ int main()
 			{
 				tempEdge = to_string(t2.id)+"T-B"+to_string(t1.id);
 				edgeVote[tempEdge] = 1;
+				edgeDead[tempEdge] = 0;
 			}
 			if(t1.bottom == t2.top)
 			{
 				tempEdge = to_string(t1.id)+"T-B"+to_string(t2.id);
 				edgeVote[tempEdge] = 1;
+				edgeDead[tempEdge] = 0;
 			}
 			if(t1.left == t2.right)
 			{
 				tempEdge = to_string(t2.id)+"L-R"+to_string(t1.id);
 				edgeVote[tempEdge] = 1;
+				edgeDead[tempEdge] = 0;
 			}
 			if(t1.right == t2.left)
 			{
 				tempEdge = to_string(t1.id)+"L-R"+to_string(t2.id);
 				edgeVote[tempEdge] = 1;
+				edgeDead[tempEdge] = 0;
 			}
 		}
 
@@ -212,7 +227,7 @@ void* searchAnswer(void *id)
 	srand(seed+ *(int*)id * 12345);
 	int randomStart = rand()%size;
 	seed = rand();
-	cout<<"randomStart: "<<randomStart<<endl;
+	//cout<<"randomStart: "<<randomStart<<endl;
 
 	position p = {0,0};
 
@@ -224,21 +239,21 @@ void* searchAnswer(void *id)
 		{
 			candidate winner = candidates.top();
 			candidates.pop();
-			cout<<"winner id: "<<winner.id<<" x:"<<winner.x <<" y:"<<winner.y<<" relativeId:"<<winner.relativeId<<" orient:"<<winner.relativeOrient<<endl;
+			//cout<<"winner id: "<<winner.id<<" x:"<<winner.x <<" y:"<<winner.y<<" relativeId:"<<winner.relativeId<<" orient:"<<winner.relativeOrient<<endl;
 			position winnerPos;
 			winnerPos.x = winner.x;
 			winnerPos.y = winner.y;
 			int winnerId = winner.id;
 
-			if((abs(min(boundary.minCol,winnerPos.x))+abs(max(boundary.maxCol,winnerPos.x)) >= width) || (abs(min(boundary.minRow,winnerPos.y))+abs(max(boundary.maxRow,winnerPos.y)) >= width) )
+			if((max(boundary.maxCol,winnerPos.x)-min(boundary.minCol,winnerPos.x) >= width) || (max(boundary.maxRow,winnerPos.y)-min(boundary.minRow,winnerPos.y)>= width))
 			{
-				cout<<"reason0"<<endl;
+				//cout<<"reason0"<<endl;
 				continue;
 			}
 
 			if(usedPos.find(winnerPos) != usedPos.end())
 			{
-				cout<<"reason1"<<endl;
+				//cout<<"reason1"<<endl;
 				continue;
 			}
 
@@ -249,19 +264,19 @@ void* searchAnswer(void *id)
 			valid = validAndEdge(winnerId,winnerPos,tempAnswer,usedPos,t,r,b,l);
 			if(!*valid)
 			{
-				cout<<"reason2"<<endl;
+				//cout<<"reason2"<<endl;
 				continue;
 			}
 
 			if(usedTiles.count(winnerId) == 1)
 			{
-				cout<<"reason3"<<endl;
+				//cout<<"reason3"<<endl;
 				substitutes.push(winner);
 				continue;
 			}
 
 			putTile(tempAnswer,winnerPos,winnerId,usedTiles,usedPos,candidates,boundary);
-			cout<<"put "<<winnerId<<" at "<<"( "<<winnerPos.x<<","<<winnerPos.y<<" )"<<endl;
+			//cout<<"put "<<winnerId<<" at "<<"( "<<winnerPos.x<<","<<winnerPos.y<<" )"<<endl;
 			// int relativeId = winner.relativeId;
 			// int orient = winner.relativeOrient;
 			// string key = "";
@@ -286,6 +301,8 @@ void* searchAnswer(void *id)
 				edgeVote[l]+=1;
 			pthread_mutex_unlock(&mutex1);
 		}
+
+		//失败的大挪移
 		// while(candidates.empty() && !substitutes.empty())
 		// {
 		// 	candidate substitute = substitutes.top();
@@ -308,13 +325,31 @@ void* searchAnswer(void *id)
 		// }
 		//break;
 
+
+
+
+		//随机移开n块
+		/*
 		if(candidates.empty() && tempAnswer.size()!=size)
 		{
-			cout<<"random remove!"<<endl;
+			//cout<<"random remove!"<<endl;
+			//cout<<"before remove size:"<<tempAnswer.size();
+			// map<position,int>::iterator iter2;
+			// iter2 = usedPos.begin();
+			// while(iter2!=usedPos.end())
+			// {
+			// 	cout<<"pos: "<<iter2->first.x<<","<<iter2->first.y<<" id: "<<iter2->second<<endl;
+			// 	iter2++;
+			// }
 			srand(seed);
 			int randomRemoveSize = rand()%(tempAnswer.size()-1)+1;
+			//option：限制随机移动块数的上限
+			// int theSize = min(5,int(tempAnswer.size()-1));
+			// int randomRemoveSize = rand()%theSize+1;
 			seed = rand();
-			cout<<"randomRemoveSize: "<<randomRemoveSize<<endl;
+			//cout<<"randomRemoveSize: "<<randomRemoveSize<<endl;
+			//option：全部移除
+			//randomRemoveSize = tempAnswer.size()-1;
 			while(randomRemoveSize)
 			{
 				int randomId = -1;
@@ -323,10 +358,10 @@ void* searchAnswer(void *id)
 					srand(seed);
 					randomId = rand()%size;
 					seed = rand();
-					if(randomId != randomStart && usedTiles.count(randomId)==1)
+					if(usedTiles.count(randomId)==1)
 						break;
 				}
-				cout<<"randomId:"<<randomId<<endl;
+				//cout<<"remove randomId:"<<randomId<<endl;
 				if(randomId != -1)
 				{
 					position oriPos = tempAnswer[randomId];
@@ -336,9 +371,30 @@ void* searchAnswer(void *id)
 				}
 				randomRemoveSize--;
 			}
+			map<int,position>::iterator it;
+			it = tempAnswer.begin();
+			map<int,position> forDeleteTempAnswer = tempAnswer;
+			while(it != tempAnswer.end() && usedTiles.size()>1)
+			{
+				position p = it->second;
+				int tileId = it->first;
+				position t={p.x-1,p.y}, r={p.x,p.y+1}, b={p.x+1,p.y}, l={p.x,p.y-1};
+				if(usedPos.find(t)==usedPos.end() && usedPos.find(r)==usedPos.end() &&usedPos.find(b)==usedPos.end() &&usedPos.find(l)==usedPos.end())
+				{
+					//cout<<"remove lonely:"<<tileId<<endl;
+					position oriPos = tempAnswer[tileId];
+					usedTiles.erase(tileId);
+					usedPos.erase(oriPos);
+					forDeleteTempAnswer.erase(tileId);
+				}
+				it++;
+			}
+			tempAnswer = forDeleteTempAnswer;
+
+			//cout<<"after remove size:"<<tempAnswer.size()<<endl;
+
 			updateBoundary(tempAnswer,boundary);
 			
-			map<int,position>::iterator it;
 			it = tempAnswer.begin();
 			while(it != tempAnswer.end())
 			{
@@ -348,6 +404,173 @@ void* searchAnswer(void *id)
 				it++;
 			}
 		}
+		*/
+		
+
+
+
+
+
+		//死局次数
+		
+		if(candidates.empty() && tempAnswer.size()!=size)
+		{
+			//cout<<"before remove size:"<<tempAnswer.size();
+			// map<position,int>::iterator iter2;
+			// iter2 = usedPos.begin();
+			// while(iter2!=usedPos.end())
+			// {
+			// 	cout<<"pos: "<<iter2->first.x<<","<<iter2->first.y<<" id: "<<iter2->second<<endl;
+			// 	iter2++;
+			// }
+
+
+			map<position,int>::iterator iter;
+			iter = usedPos.begin();
+			vector<string> edgeArray;
+			while(iter!=usedPos.end())
+			{
+				position tempPos = iter->first;
+				//right
+				position right = {tempPos.x,tempPos.y+1};
+				if(usedPos.find(right)!=usedPos.end())
+				{
+					int rightId = usedPos[right];
+					string rightDeadEdge = to_string(iter->second)+"L-R"+to_string(rightId);
+					edgeArray.push_back(rightDeadEdge);
+				}
+				//bottom
+				position bottom = {tempPos.x+1,tempPos.y};
+				if(usedPos.find(bottom)!=usedPos.end())
+				{
+					int bottomId = usedPos[bottom];
+					string bottomDeadEdge = to_string(iter->second)+"T-B"+to_string(bottomId);
+					edgeArray.push_back(bottomDeadEdge);
+				}
+				iter++;
+			}
+			//cout<<"edgeArray size:"<<edgeArray.size()<<endl;
+
+			priority_queue<deadEdge> deadEdges;
+			
+
+			pthread_mutex_lock(&mutex1);
+			for(int i=0;i<edgeArray.size();i++)
+			{
+				string e = edgeArray[i];
+				edgeDead[e]+=1;
+				deadEdge de;
+				de.edge = e;
+				de.score = edgeDead[e];
+				deadEdges.push(de);
+			}
+			pthread_mutex_unlock(&mutex1);
+
+			//cout<<"deadEdgescount: "<<deadEdges.size()<<endl;
+			
+			int randomRemoveESize;
+			if(deadEdges.size()==1)
+				randomRemoveESize = 1;
+			else
+			{
+				srand(seed);
+				randomRemoveESize = rand()%(deadEdges.size()-1)+1;
+				//randomRemoveESize = rand()%(deadEdges.size()*2/3)+1;
+				seed = rand();
+			}
+			
+			//cout<<"randomRemoveESize: "<<randomRemoveESize<<endl;
+			while(randomRemoveESize && tempAnswer.size()>1)
+			{
+				deadEdge d_ = deadEdges.top();
+				string removeEdge = d_.edge;
+				//cout<<"the edge:"<<removeEdge<<endl;
+				deadEdges.pop();
+				string::size_type findResultPos;
+				findResultPos = removeEdge.find("L-R");
+				if(findResultPos != removeEdge.npos)
+				{
+					int tempIds[2];
+					tempIds[0] = stoi(removeEdge.substr(0,findResultPos));
+					tempIds[1] = stoi(removeEdge.substr(findResultPos+3));
+					if(usedTiles.count(tempIds[0])==1 && usedTiles.count(tempIds[1])==1)
+					{
+						srand(seed);
+						int theId = rand()%2;
+						seed = rand();
+						theId = tempIds[theId];
+						//cout<<"remove:"<<theId<<endl;
+						
+						position oriPos = tempAnswer[theId];
+						usedTiles.erase(theId);
+						usedPos.erase(oriPos);
+						tempAnswer.erase(theId);
+					}
+					
+
+				}
+				else
+				{
+					findResultPos = removeEdge.find("T-B");
+					int tempIds[2];
+					tempIds[0] = stoi(removeEdge.substr(0,findResultPos));
+					tempIds[1] = stoi(removeEdge.substr(findResultPos+3));
+					if(usedTiles.count(tempIds[0])==1 && usedTiles.count(tempIds[1])==1)
+					{
+						srand(seed);
+						int theId = rand()%2;
+						seed = rand();
+						theId = tempIds[theId];
+						//cout<<"remove:"<<theId<<endl;
+
+						position oriPos = tempAnswer[theId];
+						usedTiles.erase(theId);
+						usedPos.erase(oriPos);
+						tempAnswer.erase(theId);
+
+					}
+					
+				}
+
+				randomRemoveESize--;
+
+			}
+			//cout<<"size before jiancha:"<<tempAnswer.size()<<endl;
+			map<int,position>::iterator it;
+			it = tempAnswer.begin();
+			map<int,position> forDeleteTempAnswer = tempAnswer;
+			while(it != tempAnswer.end() && usedTiles.size()>1)
+			{
+				position p = it->second;
+				int tileId = it->first;
+				//cout<<"daijianchadeid:"<<tileId<<endl;
+				position t={p.x-1,p.y}, r={p.x,p.y+1}, b={p.x+1,p.y}, l={p.x,p.y-1};
+				if(usedPos.find(t)==usedPos.end() && usedPos.find(r)==usedPos.end() &&usedPos.find(b)==usedPos.end() &&usedPos.find(l)==usedPos.end())
+				{
+					//cout<<"remove lonely:"<<tileId<<endl;
+					position oriPos = tempAnswer[tileId];
+					usedTiles.erase(tileId);
+					usedPos.erase(oriPos);
+					forDeleteTempAnswer.erase(tileId);
+				}
+				it++;
+			}
+			tempAnswer = forDeleteTempAnswer;
+			//cout<<"after remove size:"<<tempAnswer.size()<<endl;
+			updateBoundary(tempAnswer,boundary);
+			
+			it = tempAnswer.begin();
+			while(it != tempAnswer.end())
+			{
+				position p = it->second;
+				int tileId = it->first;
+				updateCandidates(tempAnswer, p, tileId, usedTiles, usedPos, candidates, boundary);
+				it++;
+			}
+		}
+
+
+		
 		
 	}
 	
@@ -414,7 +637,7 @@ void* updateCandidates(map<int,position> &tempAnswer,  position p, int tileId ,s
 		position top = {x-1,y};
 		if(usedPos.find(top)== usedPos.end())
 		{
-			if((abs(min(boundary.minCol,top.x))+abs(max(boundary.maxCol,top.x)) < width) && (abs(min(boundary.minRow,top.y))+abs(max(boundary.maxRow,top.y)) < width) )
+			if((max(boundary.maxCol,top.x)-min(boundary.minCol,top.x) < width) && (max(boundary.maxRow,top.y)-min(boundary.minRow,top.y) < width) )
 			{
 				string shead = "T-B"+to_string(tileId);
 				map<string,int>::iterator iter;
@@ -456,7 +679,7 @@ void* updateCandidates(map<int,position> &tempAnswer,  position p, int tileId ,s
 		position right = {x,y+1};
 		if(usedPos.find(right)==usedPos.end())
 		{
-			if((abs(min(boundary.minCol,right.x))+abs(max(boundary.maxCol,right.x)) < width) && (abs(min(boundary.minRow,right.y))+abs(max(boundary.maxRow,right.y)) < width) )
+			if((max(boundary.maxCol,right.x)-min(boundary.minCol,right.x) < width) && (max(boundary.maxRow,right.y)-min(boundary.minRow,right.y) < width) )
 			{
 				string shead = to_string(tileId)+"L-R";
 				map<string,int>::iterator iter;
@@ -499,7 +722,7 @@ void* updateCandidates(map<int,position> &tempAnswer,  position p, int tileId ,s
 		position bottom = {x+1,y};
 		if(usedPos.find(bottom)==usedPos.end())
 		{
-			if((abs(min(boundary.minCol,bottom.x))+abs(max(boundary.maxCol,bottom.x)) < width) && (abs(min(boundary.minRow,bottom.y))+abs(max(boundary.maxRow,bottom.y)) < width) )
+			if((max(boundary.maxCol,bottom.x)-min(boundary.minCol,bottom.x) < width) && (max(boundary.maxRow,bottom.y)-min(boundary.minRow,bottom.y) < width) )
 			{
 				string shead = to_string(tileId)+"T-B";
 				map<string,int>::iterator iter;
@@ -540,7 +763,7 @@ void* updateCandidates(map<int,position> &tempAnswer,  position p, int tileId ,s
 		position left = {x,y-1};
 		if(usedPos.find(left)==usedPos.end())
 		{
-			if((abs(min(boundary.minCol,left.x))+abs(max(boundary.maxCol,left.x)) < width) && (abs(min(boundary.minRow,left.y))+abs(max(boundary.maxRow,left.y)) < width) )
+			if((max(boundary.maxCol,left.x)-min(boundary.minCol,left.x) < width) && (max(boundary.maxRow,left.y)-min(boundary.minRow,left.y) < width) )
 			{
 				string shead = "L-R"+to_string(tileId);
 				map<string,int>::iterator iter;
