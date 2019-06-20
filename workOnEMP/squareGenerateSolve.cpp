@@ -87,9 +87,9 @@ struct squareInfo
 map<string,squareInfo> squareMap;
 vector<string> squareVector;
 
-int size = 25;
-int width = 5;
-Tile tiles[25];
+int size = 36;
+int width = 6;
+Tile tiles[36];
 map<string,int> edgeVote;
 set<string> invalidEdges;
 int* answer;
@@ -223,6 +223,7 @@ int main()
 		{
 			cout<<answer[j]<<" ";
 		}
+		cout<<endl;
 	}
 
 	for(int i=0;i<squareVector.size();i++)
@@ -245,74 +246,78 @@ void* searchAnswer(void *id)
 {
 	long seed = time(NULL);
 	srand(seed+ *(int*)id * 12345);
-	string randomStart = "";
-	while(randomStart=="")
+	seed = rand();
+	while(answer[0]==-1)
 	{
-		int randomNumber = rand()%squareVector.size();
-		string vs = squareVector[randomNumber];
-		if(squareMap[vs].tryTime!=1)
+		string randomStart = "";
+		while(randomStart=="")
 		{
-			randomStart = vs;
-			break;
+			srand(seed);
+			int randomNumber = rand()%squareVector.size();
+			seed = rand();
+			string vs = squareVector[randomNumber];
+			if(squareMap[vs].tryTime!=4)
+			{
+				randomStart = vs;
+				break;
+			}
+		}		
+		//cout<<"start with:"<<randomStart<<endl;
+		vector<string> splitResult;
+		set<int> usedTiles;
+		vector<int> squareIds;
+		superSplit(randomStart,splitResult,"-");
+
+		for(int i=0;i<splitResult.size();i++)
+		{
+			//cout<<"superSplit:"<<splitResult[i]<<endl;
+			usedTiles.insert(stoi(splitResult[i]));
+			squareIds.push_back(stoi(splitResult[i]));
+		}
+
+		int theSqSize = sqrt(squareIds.size());
+
+		vector< set<int> > triedPos;
+		vector<int> posAns;
+		for(int i=0; i<theSqSize*2+1; i++)
+		{
+			set<int> empty;
+			triedPos.push_back(empty);
+			posAns.push_back(-1);
+		}
+
+		if(!squareMap[randomStart].d0)
+		{
+			searchPosition(0,theSqSize,squareIds,usedTiles,triedPos,posAns,0,randomStart);
+		}
+		else if(!squareMap[randomStart].d1)
+		{
+			searchPosition(0,theSqSize,squareIds,usedTiles,triedPos,posAns,1,randomStart);
+		}
+		else if(!squareMap[randomStart].d2)
+		{
+			searchPosition(0,theSqSize,squareIds,usedTiles,triedPos,posAns,2,randomStart);
+		}
+		else
+		{
+			searchPosition(0,theSqSize,squareIds,usedTiles,triedPos,posAns,3,randomStart);
 		}
 	}
-	seed = rand();
-
-	cout<<"start with:"<<randomStart<<endl;
-	vector<string> splitResult;
-	set<int> usedTiles;
-	vector<int> squareIds;
-	superSplit(randomStart,splitResult,"-");
-
-	for(int i=0;i<splitResult.size();i++)
-	{
-		//cout<<"superSplit:"<<splitResult[i]<<endl;
-		usedTiles.insert(stoi(splitResult[i]));
-		squareIds.push_back(stoi(splitResult[i]));
-	}
-
-	int theSqSize = sqrt(squareIds.size());
-
-	vector< set<int> > triedPos;
-	vector<int> posAns;
-	for(int i=0; i<theSqSize*2+1; i++)
-	{
-		set<int> empty;
-		triedPos.push_back(empty);
-		posAns.push_back(-1);
-	}
-
-	if(!squareMap[randomStart].d0)
-	{
-		searchPosition(0,theSqSize,squareIds,usedTiles,triedPos,posAns,0,randomStart);
-	}
-	// else if(!squareMap[randomStart].d1)
-	// {
-	// 	searchPosition(0,theSqSize,squareIds,usedTiles,triedPos,posAns,1,randomStart);
-	// }
-	// else if(!squareMap[randomStart].d2)
-	// {
-	// 	searchPosition(0,theSqSize,squareIds,usedTiles,triedPos,posAns,2,randomStart);
-	// }
-	// else
-	// {
-	// 	searchPosition(0,theSqSize,squareIds,usedTiles,triedPos,posAns,3,randomStart);
-	// }
 	
 	return NULL;
 }
 
 void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> &usedTiles, vector< set<int> > &triedPos, vector<int> &posAns,int direction,string originKey)
 {
-	cout<<"pos:"<<pos<<endl;
-	cout<<"theSquareSize:"<<theSquareSize<<endl;
+	//cout<<"pos:"<<pos<<endl;
+	//cout<<"theSquareSize:"<<theSquareSize<<endl;
 	for(int i=pos+1; i<2*theSquareSize+1; i++)
 	{
 		if(!triedPos[i].empty())
 			triedPos[i].clear(); 
 	}
 	bool found = false;
-	cout<<"here"<<endl;
+	//cout<<"here"<<endl;
 	if(direction == 0)
 	{
 		if(pos == 0)
@@ -328,7 +333,7 @@ void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int>
 					posAns[pos] = i;
 					usedTiles.insert(i);
 					triedPos[pos].insert(i);
-					cout<<"put "<<i<<" at pos "<<pos<<endl;
+					//cout<<"put "<<i<<" at pos "<<pos<<endl;
 					break;
 				}
 			}
@@ -417,11 +422,27 @@ void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int>
 					key = key + to_string(newSquare[i]) + "-";
 				key+=to_string(newSquare[newSquare.size()-1]);
 
-				pthread_mutex_lock(&mutex1);
-				squareInfo tempInfo = {key,0,false,false,false,false};
-				squareMap[key] = tempInfo;
-				squareVector.push_back(key);
-				pthread_mutex_unlock(&mutex1);
+				if(squareMap.find(key)==squareMap.end())
+				{
+					pthread_mutex_lock(&mutex1);
+					squareInfo tempInfo = {key,0,false,false,false,false};
+					squareMap[key] = tempInfo;
+					squareVector.push_back(key);
+					pthread_mutex_unlock(&mutex1);
+				}
+
+				
+
+				if(newSquare.size()==size)
+				{
+					pthread_mutex_lock(&mutex1);
+					for(int i=0; i<newSquare.size(); i++)
+					{
+						answer[i]=newSquare[i];
+					}
+					pthread_mutex_unlock(&mutex1);
+					return NULL;
+				}
 
 				found = false;
 				pos+=1;
@@ -447,6 +468,459 @@ void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int>
 			}
 			
 		}
+	}
+	else if(direction == 1)
+	{
+		if(pos == 0)
+		{
+			int relativeId = squareIds[pos*theSquareSize+theSquareSize-1];
+			for(int i=0; i<size; i++)
+			{
+				
+				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
+					continue;
+				if(tiles[i].left == tiles[relativeId].right)
+				{
+					found = true;
+					posAns[pos] = i;
+					usedTiles.insert(i);
+					triedPos[pos].insert(i);
+					//cout<<"put "<<i<<" at pos "<<pos<<endl;
+					break;
+				}
+			}
+		}
+		else if(pos>0 && pos<theSquareSize)
+		{
+			int topId = posAns[pos-1];
+			int relativeId = squareIds[pos*theSquareSize+theSquareSize-1];
+			for(int i=0; i<size; i++)
+			{
+				
+				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
+					continue;
+				if(tiles[i].left == tiles[relativeId].right && tiles[i].top == tiles[topId].bottom)
+				{
+					found = true;
+					posAns[pos] = i;
+					usedTiles.insert(i);
+					triedPos[pos].insert(i);
+					break;
+				}
+			}
+
+		}
+		else if(pos == theSquareSize)
+		{
+			int topId = posAns[pos-1];
+			for(int i=0; i<size; i++)
+			{
+				
+				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
+					continue;
+				if(tiles[i].top == tiles[topId].bottom)
+				{
+					found = true;
+					posAns[pos] = i;
+					usedTiles.insert(i);
+					triedPos[pos].insert(i);
+					break;
+				}
+			}
+		}
+		else if(pos<2*theSquareSize+1)
+		{
+			int rightId = posAns[pos-1];
+			int relativeId = (theSquareSize-1)*theSquareSize+theSquareSize-1-(pos-theSquareSize-1);
+			for(int i=0; i<size; i++)
+			{
+				
+				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
+					continue;
+				if(tiles[i].right == tiles[rightId].left && tiles[i].top == tiles[squareIds[relativeId]].bottom)
+				{
+					found = true;
+					posAns[pos] = i;
+					usedTiles.insert(i);
+					triedPos[pos].insert(i);
+					break;
+				}
+			}
+		}
+
+		if(found)
+		{
+			
+			if(pos<2*theSquareSize)
+			{
+				searchPosition(pos+1,theSquareSize,squareIds,usedTiles,triedPos,posAns,1,originKey);
+			}
+			else if(pos == 2*theSquareSize)
+			{
+				vector<int> newSquare;
+				int k=0;
+				for(int i=0;i<theSquareSize;i++)
+				{
+					for(int j=0;j<theSquareSize;j++)
+					{
+						newSquare.push_back(squareIds[i*theSquareSize+j]);
+					}
+					newSquare.push_back(posAns[k++]);
+				}
+				for(int i=posAns.size()-1; i>=k; i--)
+					newSquare.push_back(posAns[i]);
+				string key = "";
+				for(int i=0; i<newSquare.size()-1; i++)
+					key = key + to_string(newSquare[i]) + "-";
+				key+=to_string(newSquare[newSquare.size()-1]);
+
+				if(squareMap.find(key)==squareMap.end())
+				{
+					pthread_mutex_lock(&mutex1);
+					squareInfo tempInfo = {key,0,false,false,false,false};
+					squareMap[key] = tempInfo;
+					squareVector.push_back(key);
+					pthread_mutex_unlock(&mutex1);
+				}
+
+				if(newSquare.size()==size)
+				{
+					pthread_mutex_lock(&mutex1);
+					for(int i=0; i<newSquare.size(); i++)
+					{
+						answer[i]=newSquare[i];
+					}
+					pthread_mutex_unlock(&mutex1);
+					return NULL;
+				}
+
+				found = false;
+				pos+=1;
+			}
+			
+		}
+		if(!found)
+		{
+			if(pos!=0)
+			{
+				int preId = posAns[pos-1];
+				usedTiles.erase(preId);
+				posAns[pos-1]=-1;
+				searchPosition(pos-1,theSquareSize,squareIds,usedTiles,triedPos,posAns,1,originKey);
+			}
+			else
+			{
+				pthread_mutex_lock(&mutex1);
+				squareMap[originKey].d1 = true;
+				squareMap[originKey].tryTime+=1;
+				pthread_mutex_unlock(&mutex1);
+				return NULL;
+			}
+			
+		}
+	}
+	else if(direction == 2) //|_>
+	{
+		if(pos == 0)
+		{
+			for(int i=0; i<size; i++)
+			{
+				
+				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
+					continue;
+				if(tiles[i].right == tiles[pos].left)
+				{
+					found = true;
+					posAns[pos] = i;
+					usedTiles.insert(i);
+					triedPos[pos].insert(i);
+					//cout<<"put "<<i<<" at pos "<<pos<<endl;
+					break;
+				}
+			}
+		}
+		else if(pos>0 && pos<theSquareSize)
+		{
+			int topId = posAns[pos-1];
+			int relativeId = squareIds[pos*theSquareSize];
+			for(int i=0; i<size; i++)
+			{
+				
+				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
+					continue;
+				if(tiles[i].right == tiles[relativeId].left && tiles[i].top == tiles[topId].bottom)
+				{
+					found = true;
+					posAns[pos] = i;
+					usedTiles.insert(i);
+					triedPos[pos].insert(i);
+					break;
+				}
+			}
+
+		}
+		else if(pos == theSquareSize)
+		{
+			int topId = posAns[pos-1];
+			for(int i=0; i<size; i++)
+			{
+				
+				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
+					continue;
+				if(tiles[i].top == tiles[topId].bottom)
+				{
+					found = true;
+					posAns[pos] = i;
+					usedTiles.insert(i);
+					triedPos[pos].insert(i);
+					break;
+				}
+			}
+		}
+		else if(pos<2*theSquareSize+1)
+		{
+			int leftId = posAns[pos-1];
+			int relativeId = (theSquareSize-1)*theSquareSize+pos-theSquareSize-1;
+			for(int i=0; i<size; i++)
+			{
+				
+				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
+					continue;
+				if(tiles[i].left == tiles[leftId].right && tiles[i].top == tiles[squareIds[relativeId]].bottom)
+				{
+					found = true;
+					posAns[pos] = i;
+					usedTiles.insert(i);
+					triedPos[pos].insert(i);
+					break;
+				}
+			}
+		}
+		if(found)
+		{
+			
+			if(pos<2*theSquareSize)
+			{
+				searchPosition(pos+1,theSquareSize,squareIds,usedTiles,triedPos,posAns,2,originKey);
+			}
+			else if(pos == 2*theSquareSize)
+			{
+				vector<int> newSquare;
+				int k=0;
+				for(int i=0;i<theSquareSize;i++)
+				{
+					newSquare.push_back(posAns[k++]);
+					for(int j=0;j<theSquareSize;j++)
+					{
+						newSquare.push_back(squareIds[i*theSquareSize+j]);
+					}
+					
+				}
+				while(k<posAns.size())
+					newSquare.push_back(posAns[k++]);
+				string key = "";
+				for(int i=0; i<newSquare.size()-1; i++)
+					key = key + to_string(newSquare[i]) + "-";
+				key+=to_string(newSquare[newSquare.size()-1]);
+
+				if(squareMap.find(key)==squareMap.end())
+				{
+					pthread_mutex_lock(&mutex1);
+					squareInfo tempInfo = {key,0,false,false,false,false};
+					squareMap[key] = tempInfo;
+					squareVector.push_back(key);
+					pthread_mutex_unlock(&mutex1);
+				}
+
+				if(newSquare.size()==size)
+				{
+					pthread_mutex_lock(&mutex1);
+					for(int i=0; i<newSquare.size(); i++)
+					{
+						answer[i]=newSquare[i];
+					}
+					pthread_mutex_unlock(&mutex1);
+					return NULL;
+				}
+
+				found = false;
+				pos+=1;
+			}
+			
+		}
+		if(!found)
+		{
+			if(pos!=0)
+			{
+				int preId = posAns[pos-1];
+				usedTiles.erase(preId);
+				posAns[pos-1]=-1;
+				searchPosition(pos-1,theSquareSize,squareIds,usedTiles,triedPos,posAns,2,originKey);
+			}
+			else
+			{
+				pthread_mutex_lock(&mutex1);
+				squareMap[originKey].d2 = true;
+				squareMap[originKey].tryTime+=1;
+				pthread_mutex_unlock(&mutex1);
+				return NULL;
+			}
+			
+		}
+
+	}
+	else if(direction == 3) //|<-
+	{
+		if(pos == 0)
+		{
+			int relativeId = squareIds[theSquareSize-1-pos];
+			for(int i=0; i<size; i++)
+			{
+				
+				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
+					continue;
+				if(tiles[i].bottom == tiles[relativeId].top)
+				{
+					found = true;
+					posAns[pos] = i;
+					usedTiles.insert(i);
+					triedPos[pos].insert(i);
+					//cout<<"put "<<i<<" at pos "<<pos<<endl;
+					break;
+				}
+			}
+		}
+		else if(pos>0 && pos<theSquareSize)
+		{
+			int rightId = posAns[pos-1];
+			int relativeId = squareIds[theSquareSize-1-pos];
+			for(int i=0; i<size; i++)
+			{
+				
+				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
+					continue;
+				if(tiles[i].bottom == tiles[relativeId].top && tiles[i].right == tiles[rightId].left)
+				{
+					found = true;
+					posAns[pos] = i;
+					usedTiles.insert(i);
+					triedPos[pos].insert(i);
+					break;
+				}
+			}
+
+		}
+		else if(pos == theSquareSize)
+		{
+			int rightId = posAns[pos-1];
+			for(int i=0; i<size; i++)
+			{
+				
+				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
+					continue;
+				if(tiles[i].right == tiles[rightId].left)
+				{
+					found = true;
+					posAns[pos] = i;
+					usedTiles.insert(i);
+					triedPos[pos].insert(i);
+					break;
+				}
+			}
+		}
+		else if(pos<2*theSquareSize+1)
+		{
+			int topId = posAns[pos-1];
+			int relativeId = (pos-theSquareSize-1)*theSquareSize;
+			for(int i=0; i<size; i++)
+			{
+				
+				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
+					continue;
+				if(tiles[i].top == tiles[topId].bottom && tiles[i].right == tiles[squareIds[relativeId]].left)
+				{
+					found = true;
+					posAns[pos] = i;
+					usedTiles.insert(i);
+					triedPos[pos].insert(i);
+					break;
+				}
+			}
+		}
+
+		if(found)
+		{
+			
+			if(pos<2*theSquareSize)
+			{
+				searchPosition(pos+1,theSquareSize,squareIds,usedTiles,triedPos,posAns,3,originKey);
+			}
+			else if(pos == 2*theSquareSize)
+			{
+				vector<int> newSquare;
+				for(int i=theSquareSize;i>=0;i--)
+					newSquare.push_back(posAns[i]);
+				int k=theSquareSize+1;
+				for(int i=0;i<theSquareSize;i++)
+				{
+					newSquare.push_back(posAns[k++]);
+					for(int j=0;j<theSquareSize;j++)
+					{
+						newSquare.push_back(squareIds[i*theSquareSize+j]);
+					}
+					
+				}
+				
+				string key = "";
+				for(int i=0; i<newSquare.size()-1; i++)
+					key = key + to_string(newSquare[i]) + "-";
+				key+=to_string(newSquare[newSquare.size()-1]);
+
+				if(squareMap.find(key)==squareMap.end())
+				{
+					pthread_mutex_lock(&mutex1);
+					squareInfo tempInfo = {key,0,false,false,false,false};
+					squareMap[key] = tempInfo;
+					squareVector.push_back(key);
+					pthread_mutex_unlock(&mutex1);
+				}
+
+				if(newSquare.size()==size)
+				{
+					pthread_mutex_lock(&mutex1);
+					for(int i=0; i<newSquare.size(); i++)
+					{
+						answer[i]=newSquare[i];
+					}
+					pthread_mutex_unlock(&mutex1);
+					return NULL;
+				}
+
+				found = false;
+				pos+=1;
+			}
+			
+		}
+		if(!found)
+		{
+			if(pos!=0)
+			{
+				int preId = posAns[pos-1];
+				usedTiles.erase(preId);
+				posAns[pos-1]=-1;
+				searchPosition(pos-1,theSquareSize,squareIds,usedTiles,triedPos,posAns,3,originKey);
+			}
+			else
+			{
+				pthread_mutex_lock(&mutex1);
+				squareMap[originKey].d3 = true;
+				squareMap[originKey].tryTime+=1;
+				pthread_mutex_unlock(&mutex1);
+				return NULL;
+			}
+			
+		}
+
 	}
 }
 
