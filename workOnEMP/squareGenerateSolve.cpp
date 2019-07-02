@@ -76,9 +76,9 @@ struct deadEdge
 
 struct squareInfo
 {
-	string s;
-	int tryTime;
-	bool d0;
+	string s; //square tiles ID
+	int tryTime; 
+	bool d0; 
 	bool d1;
 	bool d2;
 	bool d3;
@@ -87,9 +87,9 @@ struct squareInfo
 map<string,squareInfo> squareMap;
 vector<string> squareVector;
 
-int size = 36;
-int width = 6;
-Tile tiles[36];
+int size = 49;
+int width = 7;
+Tile tiles[49];
 map<string,int> edgeVote;
 set<string> invalidEdges;
 int* answer;
