@@ -12,10 +12,14 @@
 #include <vector>
 #include <set>
 #include <functional>
+#include <fstream>
+#include <sys/time.h>
 using namespace std;
 
-#define POOL 1
+#define POOL 24
 
+string inFileName = "data/9*9_1";
+string outFileName = "result/9*9_1_24threads";
 
 typedef struct
 {
@@ -87,9 +91,9 @@ struct squareInfo
 map<string,squareInfo> squareMap;
 vector<string> squareVector;
 
-int size = 49;
-int width = 7;
-Tile tiles[49];
+int size = 81;
+int width = 9;
+Tile tiles[81];
 map<string,int> edgeVote;
 set<string> invalidEdges;
 int* answer;
@@ -98,7 +102,7 @@ void* searchAnswer(void *id);
 
 void* justTest(void *id);
 
-void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> &usedTiles, vector< set<int> > &triedPos, vector<int> &posAns,int direction,string originKey);
+int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> &usedTiles, vector< set<int> > &triedPos, vector<int> &posAns,int direction,string originKey);
 
 //pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -123,13 +127,18 @@ void superSplit(const string& s, vector<string>& v, const string& c)
 
 int main()
 {
-	clock_t start,end;
-	start = clock();
+	//clock_t start,end;
+	timeval t_start, t_end;
+	//start = clock();
+	gettimeofday( &t_start, NULL);
+
+	ifstream input;
+	input.open(inFileName);
 
 	for(int i=0; i<size; i++)
 	{
 		string s;
-		cin>>s;
+		input>>s;
 		tiles[i].id = i;
 		tiles[i].top = s[0];
 		tiles[i].right = s[1];
@@ -140,8 +149,9 @@ int main()
 		squareInfo si = {s,0,false,false,false,false};
 		squareMap[s] = si;
 		squareVector.push_back(vs);
-		
 	}
+
+	input.close();
 
 
 	// for(int i=0; i<size-1; i++)
@@ -226,12 +236,24 @@ int main()
 		cout<<endl;
 	}
 
-	for(int i=0;i<squareVector.size();i++)
-		cout<<squareVector[i]<<endl;
+	// for(int i=0;i<squareVector.size();i++)
+	// 	cout<<squareVector[i]<<endl;
 
-	end = clock();
+	//end = clock();
+	gettimeofday( &t_end, NULL);
 
-	cout<<"the total time is:"<<((double)(end-start))/CLOCKS_PER_SEC << endl;
+	 double delta_t = (t_end.tv_sec-t_start.tv_sec) + (t_end.tv_usec-t_start.tv_usec)/1000000.0;
+
+	//cout<<"the total time is:"<<((double)(end-start))/CLOCKS_PER_SEC << endl;
+	cout<<"the total time is:"<<delta_t<<endl;
+	ofstream output;
+	
+	output.open(outFileName,ios::app);
+	output << delta_t<< endl;
+	output.close();
+
+	free(threads);
+	free(answer);
 	
 	return 0;
 }
@@ -286,29 +308,79 @@ void* searchAnswer(void *id)
 			posAns.push_back(-1);
 		}
 
+		int finish = 0;
+		int POS = 0;
 		if(!squareMap[randomStart].d0)
 		{
-			searchPosition(0,theSqSize,squareIds,usedTiles,triedPos,posAns,0,randomStart);
+			
+			while(finish!=2)
+			{
+				int *pfinish = searchPosition(POS,theSqSize,squareIds,usedTiles,triedPos,posAns,0,randomStart);
+				finish = *pfinish;
+				delete pfinish;
+				if(finish == 1)
+					POS+=1;
+				else if(finish == 0)
+					POS-=1;
+				else
+					break;
+			}
+			
 		}
 		else if(!squareMap[randomStart].d1)
 		{
-			searchPosition(0,theSqSize,squareIds,usedTiles,triedPos,posAns,1,randomStart);
+			while(finish!=2)
+			{
+				int *pfinish = searchPosition(POS,theSqSize,squareIds,usedTiles,triedPos,posAns,1,randomStart);
+				finish = *pfinish;
+				delete pfinish;
+				if(finish == 1)
+					POS+=1;
+				else if(finish == 0)
+					POS-=1;
+				else
+					break;
+			}
 		}
 		else if(!squareMap[randomStart].d2)
 		{
-			searchPosition(0,theSqSize,squareIds,usedTiles,triedPos,posAns,2,randomStart);
+			while(finish!=2)
+			{
+				int *pfinish = searchPosition(POS,theSqSize,squareIds,usedTiles,triedPos,posAns,2,randomStart);
+				finish = *pfinish;
+				delete pfinish;
+				if(finish == 1)
+					POS+=1;
+				else if(finish == 0)
+					POS-=1;
+				else
+					break;
+			}
 		}
 		else
 		{
-			searchPosition(0,theSqSize,squareIds,usedTiles,triedPos,posAns,3,randomStart);
+			while(finish!=2)
+			{
+				int *pfinish = searchPosition(POS,theSqSize,squareIds,usedTiles,triedPos,posAns,3,randomStart);
+				finish = *pfinish;
+				delete pfinish;
+				if(finish == 1)
+					POS+=1;
+				else if(finish == 0)
+					POS-=1;
+				else
+					break;
+			}
 		}
 	}
 	
 	return NULL;
 }
-
-void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> &usedTiles, vector< set<int> > &triedPos, vector<int> &posAns,int direction,string originKey)
+//0:failed 1:success 2:finish
+int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> &usedTiles, vector< set<int> > &triedPos, vector<int> &posAns,int direction,string originKey)
 {
+	// int returnStatus;
+	// int *pRe;
 	//cout<<"pos:"<<pos<<endl;
 	//cout<<"theSquareSize:"<<theSquareSize<<endl;
 	for(int i=pos+1; i<2*theSquareSize+1; i++)
@@ -401,7 +473,10 @@ void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int>
 			
 			if(pos<2*theSquareSize)
 			{
-				searchPosition(pos+1,theSquareSize,squareIds,usedTiles,triedPos,posAns,0,originKey);
+				//returnStatus = 1;
+				int *pRe = new int(1);
+				return pRe;
+				//searchPosition(pos+1,theSquareSize,squareIds,usedTiles,triedPos,posAns,0,originKey);
 			}
 			else if(pos == 2*theSquareSize)
 			{
@@ -441,7 +516,10 @@ void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int>
 						answer[i]=newSquare[i];
 					}
 					pthread_mutex_unlock(&mutex1);
-					return NULL;
+					//returnStatus = 2;
+					int *pRe = new int(2);
+					return pRe;
+					// return NULL;
 				}
 
 				found = false;
@@ -456,7 +534,10 @@ void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int>
 				int preId = posAns[pos-1];
 				usedTiles.erase(preId);
 				posAns[pos-1]=-1;
-				searchPosition(pos-1,theSquareSize,squareIds,usedTiles,triedPos,posAns,0,originKey);
+				//returnStatus = 0;
+				int *pRe = new int(0);
+				return pRe;
+				// searchPosition(pos-1,theSquareSize,squareIds,usedTiles,triedPos,posAns,0,originKey);
 			}
 			else
 			{
@@ -464,7 +545,10 @@ void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int>
 				squareMap[originKey].d0 = true;
 				squareMap[originKey].tryTime+=1;
 				pthread_mutex_unlock(&mutex1);
-				return NULL;
+				//return NULL;
+				//returnStatus = 2;
+				int *pRe = new int(2);
+				return pRe;
 			}
 			
 		}
@@ -553,7 +637,10 @@ void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int>
 			
 			if(pos<2*theSquareSize)
 			{
-				searchPosition(pos+1,theSquareSize,squareIds,usedTiles,triedPos,posAns,1,originKey);
+				//returnStatus = 1;
+				int *pRe = new int(1);
+				return pRe;
+				//searchPosition(pos+1,theSquareSize,squareIds,usedTiles,triedPos,posAns,1,originKey);
 			}
 			else if(pos == 2*theSquareSize)
 			{
@@ -591,7 +678,10 @@ void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int>
 						answer[i]=newSquare[i];
 					}
 					pthread_mutex_unlock(&mutex1);
-					return NULL;
+					//return NULL;
+					//returnStatus = 2;
+					int *pRe = new int(2);
+					return pRe;
 				}
 
 				found = false;
@@ -606,7 +696,10 @@ void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int>
 				int preId = posAns[pos-1];
 				usedTiles.erase(preId);
 				posAns[pos-1]=-1;
-				searchPosition(pos-1,theSquareSize,squareIds,usedTiles,triedPos,posAns,1,originKey);
+				//returnStatus = 0;
+				int *pRe = new int(0);
+				return pRe;
+				//searchPosition(pos-1,theSquareSize,squareIds,usedTiles,triedPos,posAns,1,originKey);
 			}
 			else
 			{
@@ -614,7 +707,10 @@ void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int>
 				squareMap[originKey].d1 = true;
 				squareMap[originKey].tryTime+=1;
 				pthread_mutex_unlock(&mutex1);
-				return NULL;
+				//return NULL;
+				//returnStatus = 2;
+				int *pRe = new int(2);
+				return pRe;
 			}
 			
 		}
@@ -701,7 +797,10 @@ void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int>
 			
 			if(pos<2*theSquareSize)
 			{
-				searchPosition(pos+1,theSquareSize,squareIds,usedTiles,triedPos,posAns,2,originKey);
+				//returnStatus = 1;
+				int *pRe = new int(1);
+				return pRe;
+				//searchPosition(pos+1,theSquareSize,squareIds,usedTiles,triedPos,posAns,2,originKey);
 			}
 			else if(pos == 2*theSquareSize)
 			{
@@ -740,7 +839,10 @@ void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int>
 						answer[i]=newSquare[i];
 					}
 					pthread_mutex_unlock(&mutex1);
-					return NULL;
+					//return NULL;
+					//returnStatus = 2;
+					int *pRe = new int(2);
+					return pRe;
 				}
 
 				found = false;
@@ -755,7 +857,10 @@ void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int>
 				int preId = posAns[pos-1];
 				usedTiles.erase(preId);
 				posAns[pos-1]=-1;
-				searchPosition(pos-1,theSquareSize,squareIds,usedTiles,triedPos,posAns,2,originKey);
+				//searchPosition(pos-1,theSquareSize,squareIds,usedTiles,triedPos,posAns,2,originKey);
+				//returnStatus = 0;
+				int *pRe = new int(0);
+				return pRe;
 			}
 			else
 			{
@@ -763,7 +868,10 @@ void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int>
 				squareMap[originKey].d2 = true;
 				squareMap[originKey].tryTime+=1;
 				pthread_mutex_unlock(&mutex1);
-				return NULL;
+				//return NULL;
+				//returnStatus = 2;
+				int *pRe = new int(2);
+				return pRe;
 			}
 			
 		}
@@ -853,7 +961,10 @@ void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int>
 			
 			if(pos<2*theSquareSize)
 			{
-				searchPosition(pos+1,theSquareSize,squareIds,usedTiles,triedPos,posAns,3,originKey);
+				//returnStatus = 1;
+				int *pRe = new int(1);
+				return pRe;
+				//searchPosition(pos+1,theSquareSize,squareIds,usedTiles,triedPos,posAns,3,originKey);
 			}
 			else if(pos == 2*theSquareSize)
 			{
@@ -893,7 +1004,10 @@ void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int>
 						answer[i]=newSquare[i];
 					}
 					pthread_mutex_unlock(&mutex1);
-					return NULL;
+					//return NULL;
+					//returnStatus = 2;
+					int *pRe = new int(2);
+					return pRe;
 				}
 
 				found = false;
@@ -908,7 +1022,10 @@ void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int>
 				int preId = posAns[pos-1];
 				usedTiles.erase(preId);
 				posAns[pos-1]=-1;
-				searchPosition(pos-1,theSquareSize,squareIds,usedTiles,triedPos,posAns,3,originKey);
+				//searchPosition(pos-1,theSquareSize,squareIds,usedTiles,triedPos,posAns,3,originKey);
+				//returnStatus = 0;
+				int *pRe = new int(0);
+				return pRe;
 			}
 			else
 			{
@@ -916,7 +1033,10 @@ void* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int>
 				squareMap[originKey].d3 = true;
 				squareMap[originKey].tryTime+=1;
 				pthread_mutex_unlock(&mutex1);
-				return NULL;
+				//return NULL;
+				//returnStatus = 2;
+				int *pRe = new int(2);
+				return pRe;
 			}
 			
 		}
