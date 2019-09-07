@@ -18,7 +18,7 @@ using namespace std;
 
 #define POOL 24
 
-string inFileName = "data/9*9_1";
+string inFileName = "data/9*9_3";
 string outFileName = "result/9*9_1_24threads";
 
 typedef struct
@@ -91,6 +91,9 @@ struct squareInfo
 map<string,squareInfo> squareMap;
 vector<string> squareVector;
 
+map<string,map<int,int> > allEdges;
+map<string,vector<int> > validEdges;
+
 int size = 81;
 int width = 9;
 Tile tiles[81];
@@ -153,34 +156,277 @@ int main()
 
 	input.close();
 
+    int allEdgeCount = 0;
+	for(int i=0; i<size-1; i++)
+		for(int j=i+1; j<size; j++)
+		{
+			Tile t1 = tiles[i];
+			Tile t2 = tiles[j];
+			string s1,s2;
+			if(t1.top == t2.bottom)
+			{
+				s1 = to_string(t2.id)+"T-B";
+				allEdges[s1][t1.id] = -1;
+				s2 = to_string(t1.id)+"B-T";
+				allEdges[s2][t2.id] = -1;
+				allEdgeCount+=2;
+			}
+			if(t1.bottom == t2.top)
+			{
+				s1 = to_string(t1.id)+"T-B";
+				allEdges[s1][t2.id] = -1;
+				s2 = to_string(t2.id)+"B-T";
+				allEdges[s2][t1.id] = -1;
+				allEdgeCount+=2;
+			}
+			if(t1.left == t2.right)
+			{
+				s1 = to_string(t2.id)+"L-R";
+				allEdges[s1][t1.id] = -1;
+				s2 = to_string(t1.id)+"R-L";
+				allEdges[s2][t2.id] = -1;
+				allEdgeCount+=2;
+			}
+			if(t1.right == t2.left)
+			{
+				s1 = to_string(t1.id)+"L-R";
+				allEdges[s1][t2.id] = -1;
+				s2 = to_string(t2.id)+"R-L";
+				allEdges[s2][t1.id] = -1;
+				allEdgeCount+=2;
+			}
+		}
+	cout<<"allEdgeCount:"<<allEdgeCount<<endl;
 
-	// for(int i=0; i<size-1; i++)
-	// 	for(int j=i+1; j<size; j++)
-	// 	{
-	// 		Tile t1 = tiles[i];
-	// 		Tile t2 = tiles[j];
-	// 		string tempEdge;
-	// 		if(t1.top == t2.bottom)
-	// 		{
-	// 			tempEdge = to_string(t2.id)+"T-B"+to_string(t1.id);
-	// 			edgeVote[tempEdge] = 1;
-	// 		}
-	// 		if(t1.bottom == t2.top)
-	// 		{
-	// 			tempEdge = to_string(t1.id)+"T-B"+to_string(t2.id);
-	// 			edgeVote[tempEdge] = 1;
-	// 		}
-	// 		if(t1.left == t2.right)
-	// 		{
-	// 			tempEdge = to_string(t2.id)+"L-R"+to_string(t1.id);
-	// 			edgeVote[tempEdge] = 1;
-	// 		}
-	// 		if(t1.right == t2.left)
-	// 		{
-	// 			tempEdge = to_string(t1.id)+"L-R"+to_string(t2.id);
-	// 			edgeVote[tempEdge] = 1;
-	// 		}
-	// 	}
+	map<string,map<int,int> > :: iterator it1;
+	it1 = allEdges.begin();
+	while(it1 != allEdges.end())
+	{
+		string tempS = it1->first;
+		map<int,int> tempMap = it1->second;
+		map<int,int> :: iterator it2;
+		it2 = tempMap.begin();
+		while(it2 != tempMap.end())
+		{
+			if(it2->second != -1)
+			{
+				it2++;
+				continue;
+			}
+			string::size_type findResultPos;
+			findResultPos = tempS.find("L-R");
+			if(findResultPos != tempS.npos) //L-R edge
+			{
+				int theLeftId = stoi(tempS.substr(0,findResultPos));
+				int theRightId = it2->first;
+				bool certiValid = false;
+
+				//top direction
+				string s1 = to_string(theLeftId)+"B-T";
+				string s2 = to_string(theRightId)+"B-T";
+				string tempS1;
+				map<int,int> topLeftValidMap = allEdges[s1];
+				map<int,int> topRightValidMap = allEdges[s2];
+				map<int,int>::iterator tlvm, trvm;
+				tlvm = topLeftValidMap.begin();
+				trvm = topRightValidMap.begin();
+				while(tlvm != topLeftValidMap.end())
+				{
+					int topLeftId = tlvm->first;
+					while(trvm!= topRightValidMap.end())
+					{
+						int topRightId = trvm->first;
+						if(tiles[topLeftId].right == tiles[topRightId].left)
+						{
+							certiValid = true;
+							allEdges[tempS][theRightId] = 1;
+							tempS1 = to_string(theRightId)+"R-L";
+							allEdges[tempS1][theLeftId] = 1;
+							tempS1 = to_string(topLeftId)+"L-R";
+							allEdges[tempS1][topRightId] = 1;
+							tempS1 = to_string(topRightId)+"R-L";
+							allEdges[tempS1][topLeftId] = 1;
+							tempS1 = to_string(topLeftId)+"T-B";
+							allEdges[tempS1][theLeftId] = 1;
+							tempS1 = to_string(theLeftId)+"B-T";
+							allEdges[tempS1][topLeftId] = 1;
+							tempS1 = to_string(topRightId)+"T-B";
+							allEdges[tempS1][theRightId] = 1;
+							tempS1 = to_string(theRightId)+"B-T";
+							allEdges[tempS1][topRightId] = 1;
+
+						}
+						trvm++;
+					}
+					tlvm++;
+				}
+
+				//bottom direction
+				s1 = to_string(theLeftId)+"T-B";
+				s2 = to_string(theRightId)+"T-B";
+				map<int,int> bottomLeftValidMap = allEdges[s1];
+				map<int,int> bottomRightValidMap = allEdges[s2];
+				map<int,int>::iterator blvm, brvm;
+				blvm = bottomLeftValidMap.begin();
+				brvm = bottomRightValidMap.begin();
+				while(blvm != bottomLeftValidMap.end())
+				{
+					int bottomLeftId = blvm->first;
+					while(brvm!= bottomRightValidMap.end())
+					{
+						int bottomRightId = brvm->first;
+						if(tiles[bottomLeftId].right == tiles[bottomRightId].left)
+						{
+							certiValid = true;
+							allEdges[tempS][theRightId] = 1;
+							tempS1 = to_string(theRightId)+"R-L";
+							allEdges[tempS1][theLeftId] = 1;
+							tempS1 = to_string(bottomLeftId)+"L-R";
+							allEdges[tempS1][bottomRightId] = 1;
+							tempS1 = to_string(bottomRightId)+"R-L";
+							allEdges[tempS1][bottomLeftId] = 1;
+							tempS1 = to_string(bottomLeftId)+"B-T";
+							allEdges[tempS1][theLeftId] = 1;
+							tempS1 = to_string(theLeftId)+"T-B";
+							allEdges[tempS1][bottomLeftId] = 1;
+							tempS1 = to_string(bottomRightId)+"B-T";
+							allEdges[tempS1][theRightId] = 1;
+							tempS1 = to_string(theRightId)+"T-B";
+							allEdges[tempS1][bottomRightId] = 1;
+						}
+						brvm++;
+					}
+					blvm++;
+				}
+				if(!certiValid)
+				{
+					allEdges[tempS][theRightId] = 0;
+					tempS1 = to_string(theRightId)+"R-L";
+					allEdges[tempS1][theLeftId] = 0;
+
+				}
+			}
+			findResultPos = tempS.find("T-B");
+			if(findResultPos != tempS.npos) //T-B edge
+			{
+				int theTopId = stoi(tempS.substr(0,findResultPos));
+				int theBottomId = it2->first;
+				bool certiValid = false;
+
+				//right direction
+				string s1 = to_string(theTopId)+"L-R";
+				string s2 = to_string(theBottomId)+"L-R";
+				string tempS1;
+				map<int,int> rightTopValidMap = allEdges[s1];
+				map<int,int> rightBottomValidMap = allEdges[s2];
+				map<int,int>::iterator rtvm, rbvm;
+				rtvm = rightTopValidMap.begin();
+				rbvm = rightBottomValidMap.begin();
+				while(rtvm != rightTopValidMap.end())
+				{
+					int rightTopId = rtvm->first;
+					while(rbvm!= rightBottomValidMap.end())
+					{
+						int rightBottomId = rbvm->first;
+						if(tiles[rightTopId].bottom == tiles[rightBottomId].top)
+						{
+							certiValid = true;
+							allEdges[tempS][theBottomId] = 1;
+							tempS1 = to_string(theBottomId)+"B-T";
+							allEdges[tempS1][theTopId] = 1;
+							tempS1 = to_string(rightTopId)+"T-B";
+							allEdges[tempS1][rightBottomId] = 1;
+							tempS1 = to_string(rightBottomId)+"B-T";
+							allEdges[tempS1][rightTopId] = 1;
+							tempS1 = to_string(theTopId)+"L-R";
+							allEdges[tempS1][rightTopId] = 1;
+							tempS1 = to_string(rightTopId)+"R-L";
+							allEdges[tempS1][theTopId] = 1;
+							tempS1 = to_string(theBottomId)+"L-R";
+							allEdges[tempS1][rightBottomId] = 1;
+							tempS1 = to_string(rightBottomId)+"R-L";
+							allEdges[tempS1][theBottomId] = 1;
+						}
+						rbvm++;
+					}
+					rtvm++;
+				}
+
+				//left direction
+				s1 = to_string(theTopId)+"R-L";
+				s2 = to_string(theBottomId)+"R-L";
+				map<int,int> leftTopValidMap = allEdges[s1];
+				map<int,int> leftBottomValidMap = allEdges[s2];
+				map<int,int>::iterator ltvm, lbvm;
+				ltvm = leftTopValidMap.begin();
+				lbvm = leftBottomValidMap.begin();
+				while(ltvm != leftTopValidMap.end())
+				{
+					int leftTopId = ltvm->first;
+					while(lbvm!= leftBottomValidMap.end())
+					{
+						int leftBottomId = lbvm->first;
+						if(tiles[leftTopId].bottom == tiles[leftBottomId].top)
+						{
+							certiValid = true;
+							allEdges[tempS][theBottomId] = 1;
+							tempS1 = to_string(theBottomId)+"B-T";
+							allEdges[tempS1][theTopId] = 1;
+							tempS1 = to_string(leftTopId)+"T-B";
+							allEdges[tempS1][leftBottomId] = 1;
+							tempS1 = to_string(leftBottomId)+"B-T";
+							allEdges[tempS1][leftTopId] = 1;
+							tempS1 = to_string(theTopId)+"R-L";
+							allEdges[tempS1][leftTopId] = 1;
+							tempS1 = to_string(leftTopId)+"L-R";
+							allEdges[tempS1][theTopId] = 1;
+							tempS1 = to_string(theBottomId)+"R-L";
+							allEdges[tempS1][leftBottomId] = 1;
+							tempS1 = to_string(leftBottomId)+"L-R";
+							allEdges[tempS1][theBottomId] = 1;
+						}
+						lbvm++;
+					}
+					ltvm++;
+				}
+				if(!certiValid)
+				{
+					allEdges[tempS][theBottomId] = 0;
+					tempS1 = to_string(theBottomId)+"B-T";
+					allEdges[tempS1][theTopId] = 0;
+
+				}
+			}
+			it2++;
+		}
+		it1++;
+	}
+
+	int validEdgeCount = 0;
+	it1 = allEdges.begin();
+	while(it1 != allEdges.end())
+	{
+		string tempS = it1->first;
+		map<int,int> tempMap = it1->second;
+		map<int,int> :: iterator it2;
+		it2 = tempMap.begin();
+		vector<int> tempVec;
+		while(it2 != tempMap.end())
+		{
+			if(it2->second != 0)
+			{
+				tempVec.push_back(it2->first);
+				validEdgeCount+=1;
+			}
+			it2++;
+		}
+		validEdges[tempS] = tempVec;
+		it1++;
+	}
+
+	cout<<"validEdges:"<<validEdgeCount<<endl;
+	return 0;
+
 
 	// map<string,int>::iterator iter;
 	//     iter = edgeVote.begin();
@@ -189,6 +435,7 @@ int main()
 	//         iter++;
 	//     }
 
+/*
 	void *status;
 	
 	pthread_t *threads;
@@ -242,7 +489,7 @@ int main()
 	//end = clock();
 	gettimeofday( &t_end, NULL);
 
-	 double delta_t = (t_end.tv_sec-t_start.tv_sec) + (t_end.tv_usec-t_start.tv_usec)/1000000.0;
+	double delta_t = (t_end.tv_sec-t_start.tv_sec) + (t_end.tv_usec-t_start.tv_usec)/1000000.0;
 
 	//cout<<"the total time is:"<<((double)(end-start))/CLOCKS_PER_SEC << endl;
 	cout<<"the total time is:"<<delta_t<<endl;
@@ -254,8 +501,9 @@ int main()
 
 	free(threads);
 	free(answer);
-	
+
 	return 0;
+	*/
 }
 
 void* justTest(void *id)
