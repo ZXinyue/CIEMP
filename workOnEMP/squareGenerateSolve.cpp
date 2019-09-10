@@ -18,8 +18,8 @@ using namespace std;
 
 #define POOL 24
 
-string inFileName = "data/9*9_3";
-string outFileName = "result/9*9_1_24threads";
+string inFileName = "data/9*9_1";
+string outFileName = "result/9*9_1_24threads_1";
 
 typedef struct
 {
@@ -138,6 +138,7 @@ int main()
 	ifstream input;
 	input.open(inFileName);
 
+	//读入数据并初始化
 	for(int i=0; i<size; i++)
 	{
 		string s;
@@ -156,6 +157,7 @@ int main()
 
 	input.close();
 
+	//存储所有边
     int allEdgeCount = 0;
 	for(int i=0; i<size-1; i++)
 		for(int j=i+1; j<size; j++)
@@ -198,6 +200,7 @@ int main()
 		}
 	cout<<"allEdgeCount:"<<allEdgeCount<<endl;
 
+	//遍历以找到不合法边 不合法边：无法扩展成为2*2的边
 	map<string,map<int,int> > :: iterator it1;
 	it1 = allEdges.begin();
 	while(it1 != allEdges.end())
@@ -420,12 +423,13 @@ int main()
 			}
 			it2++;
 		}
+		//set<int> tempSet(tempVec.begin(),tempVec.end());
 		validEdges[tempS] = tempVec;
 		it1++;
 	}
 
 	cout<<"validEdges:"<<validEdgeCount<<endl;
-	return 0;
+
 
 
 	// map<string,int>::iterator iter;
@@ -435,7 +439,7 @@ int main()
 	//         iter++;
 	//     }
 
-/*
+
 	void *status;
 	
 	pthread_t *threads;
@@ -503,7 +507,7 @@ int main()
 	free(answer);
 
 	return 0;
-	*/
+	
 }
 
 void* justTest(void *id)
@@ -520,7 +524,7 @@ void* searchAnswer(void *id)
 	while(answer[0]==-1)
 	{
 		string randomStart = "";
-		while(randomStart=="")
+		while(randomStart=="") //随机选取一个碎块作为扩展的起始
 		{
 			srand(seed);
 			int randomNumber = rand()%squareVector.size();
@@ -547,8 +551,8 @@ void* searchAnswer(void *id)
 
 		int theSqSize = sqrt(squareIds.size());
 
-		vector< set<int> > triedPos;
-		vector<int> posAns;
+		vector< set<int> > triedPos;//存储每个位置已经尝试过的块的id
+		vector<int> posAns;//存储此次扩展的当前结果
 		for(int i=0; i<theSqSize*2+1; i++)
 		{
 			set<int> empty;
@@ -556,7 +560,7 @@ void* searchAnswer(void *id)
 			posAns.push_back(-1);
 		}
 
-		int finish = 0;
+		int finish = 0;//0:failed 1:success 2:finish
 		int POS = 0;
 		if(!squareMap[randomStart].d0)
 		{
@@ -627,106 +631,112 @@ void* searchAnswer(void *id)
 //0:failed 1:success 2:finish
 int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> &usedTiles, vector< set<int> > &triedPos, vector<int> &posAns,int direction,string originKey)
 {
-	// int returnStatus;
-	// int *pRe;
-	//cout<<"pos:"<<pos<<endl;
-	//cout<<"theSquareSize:"<<theSquareSize<<endl;
 	for(int i=pos+1; i<2*theSquareSize+1; i++)
 	{
 		if(!triedPos[i].empty())
 			triedPos[i].clear(); 
 	}
 	bool found = false;
-	//cout<<"here"<<endl;
-	if(direction == 0)
+	if(direction == 0)  //——|
 	{
 		if(pos == 0)
 		{
-			for(int i=0; i<size; i++)
+			vector<int> candiVector = validEdges[to_string(squareIds[pos])+"B-T"];
+			for(int iter=0; iter<candiVector.size(); iter++)
 			{
 				
+				int i = candiVector[iter];
 				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
 					continue;
-				if(tiles[i].bottom == tiles[squareIds[pos]].top)
-				{
-					found = true;
-					posAns[pos] = i;
-					usedTiles.insert(i);
-					triedPos[pos].insert(i);
-					//cout<<"put "<<i<<" at pos "<<pos<<endl;
-					break;
-				}
+				found = true;
+				posAns[pos] = i;
+				usedTiles.insert(i);
+				triedPos[pos].insert(i);
+				break;
+				
 			}
 		}
 		else if(pos>0 && pos<theSquareSize)
 		{
 			int leftId = posAns[pos-1];
-			for(int i=0; i<size; i++)
+			vector<int> v1 = validEdges[to_string(leftId)+"L-R"];
+			vector<int> v2 = validEdges[to_string(squareIds[pos])+"B-T"];
+			vector<int> candiVector;
+			sort(v1.begin(),v1.end());   
+			sort(v2.begin(),v2.end());   
+			set_union(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
+			for(int iter=0; iter<candiVector.size(); iter++)
 			{
 				
+				int i = candiVector[iter];
 				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
 					continue;
-				if(tiles[i].bottom == tiles[squareIds[pos]].top && tiles[i].left == tiles[leftId].right)
-				{
-					found = true;
-					posAns[pos] = i;
-					usedTiles.insert(i);
-					triedPos[pos].insert(i);
-					break;
-				}
+				
+				found = true;
+				posAns[pos] = i;
+				usedTiles.insert(i);
+				triedPos[pos].insert(i);
+				break;
+				
 			}
 
 		}
 		else if(pos == theSquareSize)
 		{
 			int leftId = posAns[pos-1];
-			for(int i=0; i<size; i++)
+			vector<int> candiVector = validEdges[to_string(leftId)+"L-R"];
+			for(int iter=0; iter<candiVector.size(); iter++)
 			{
 				
+				int i = candiVector[iter];
 				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
 					continue;
-				if(tiles[i].left == tiles[leftId].right)
-				{
-					found = true;
-					posAns[pos] = i;
-					usedTiles.insert(i);
-					triedPos[pos].insert(i);
-					break;
-				}
+				
+				found = true;
+				posAns[pos] = i;
+				usedTiles.insert(i);
+				triedPos[pos].insert(i);
+				break;
+				
 			}
 		}
 		else if(pos<2*theSquareSize+1)
 		{
 			int topId = posAns[pos-1];
 			int relativeId = (pos-theSquareSize-1)*theSquareSize+theSquareSize-1;
-			for(int i=0; i<size; i++)
+			vector<int> v1 = validEdges[to_string(topId)+"T-B"];
+			vector<int> v2 = validEdges[to_string(squareIds[relativeId])+"L-R"];
+			vector<int> candiVector;
+			sort(v1.begin(),v1.end());   
+			sort(v2.begin(),v2.end());   
+			set_union(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
+			for(int iter=0; iter<candiVector.size(); iter++)
 			{
-				
+				int i = candiVector[iter];
 				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
 					continue;
-				if(tiles[i].top == tiles[topId].bottom && tiles[i].left == tiles[squareIds[relativeId]].right)
-				{
-					found = true;
-					posAns[pos] = i;
-					usedTiles.insert(i);
-					triedPos[pos].insert(i);
-					break;
-				}
+				
+				found = true;
+				posAns[pos] = i;
+				usedTiles.insert(i);
+				triedPos[pos].insert(i);
+				break;
+				
 			}
 		}
 
 
-		if(found)
+		if(found) 
 		{
 			
-			if(pos<2*theSquareSize)
+			if(pos<2*theSquareSize) 
 			{
 				//returnStatus = 1;
 				int *pRe = new int(1);
 				return pRe;
 				//searchPosition(pos+1,theSquareSize,squareIds,usedTiles,triedPos,posAns,0,originKey);
 			}
-			else if(pos == 2*theSquareSize)
+			else if(pos == 2*theSquareSize) 
 			{
 				vector<int> newSquare;
 				int k;
@@ -775,7 +785,7 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 			}
 			
 		}
-		if(!found)
+		if(!found) 
 		{
 			if(pos!=0)
 			{
@@ -806,77 +816,89 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 		if(pos == 0)
 		{
 			int relativeId = squareIds[pos*theSquareSize+theSquareSize-1];
-			for(int i=0; i<size; i++)
+			vector<int> candiVector = validEdges[to_string(relativeId)+"L-R"];
+			for(int iter=0; iter<candiVector.size(); iter++)
 			{
-				
+				int i = candiVector[iter];
 				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
 					continue;
-				if(tiles[i].left == tiles[relativeId].right)
-				{
-					found = true;
-					posAns[pos] = i;
-					usedTiles.insert(i);
-					triedPos[pos].insert(i);
-					//cout<<"put "<<i<<" at pos "<<pos<<endl;
-					break;
-				}
+				
+				found = true;
+				posAns[pos] = i;
+				usedTiles.insert(i);
+				triedPos[pos].insert(i);
+				//cout<<"put "<<i<<" at pos "<<pos<<endl;
+				break;
+				
 			}
 		}
 		else if(pos>0 && pos<theSquareSize)
 		{
 			int topId = posAns[pos-1];
 			int relativeId = squareIds[pos*theSquareSize+theSquareSize-1];
-			for(int i=0; i<size; i++)
+			vector<int> v1 = validEdges[to_string(topId)+"T-B"];
+			vector<int> v2 = validEdges[to_string(relativeId)+"L-R"];
+			vector<int> candiVector;
+			sort(v1.begin(),v1.end());   
+			sort(v2.begin(),v2.end());   
+			set_union(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
+
+			for(int iter=0; iter<candiVector.size(); iter++)
 			{
-				
+				int i = candiVector[iter];
 				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
 					continue;
-				if(tiles[i].left == tiles[relativeId].right && tiles[i].top == tiles[topId].bottom)
-				{
-					found = true;
-					posAns[pos] = i;
-					usedTiles.insert(i);
-					triedPos[pos].insert(i);
-					break;
-				}
+				
+				found = true;
+				posAns[pos] = i;
+				usedTiles.insert(i);
+				triedPos[pos].insert(i);
+				break;
+				
 			}
 
 		}
 		else if(pos == theSquareSize)
 		{
 			int topId = posAns[pos-1];
-			for(int i=0; i<size; i++)
+			vector<int> candiVector = validEdges[to_string(topId)+"T-B"];
+			for(int iter=0; iter<candiVector.size(); iter++)
 			{
-				
+				int i = candiVector[iter];
 				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
 					continue;
-				if(tiles[i].top == tiles[topId].bottom)
-				{
-					found = true;
-					posAns[pos] = i;
-					usedTiles.insert(i);
-					triedPos[pos].insert(i);
-					break;
-				}
+				
+				found = true;
+				posAns[pos] = i;
+				usedTiles.insert(i);
+				triedPos[pos].insert(i);
+				break;
+				
 			}
 		}
 		else if(pos<2*theSquareSize+1)
 		{
 			int rightId = posAns[pos-1];
-			int relativeId = (theSquareSize-1)*theSquareSize+theSquareSize-1-(pos-theSquareSize-1);
-			for(int i=0; i<size; i++)
+			int relativeId = squareIds[(theSquareSize-1)*theSquareSize+theSquareSize-1-(pos-theSquareSize-1)];
+			vector<int> v1 = validEdges[to_string(rightId)+"R-L"];
+			vector<int> v2 = validEdges[to_string(relativeId)+"T-B"];
+			vector<int> candiVector;
+			sort(v1.begin(),v1.end());   
+			sort(v2.begin(),v2.end());   
+			set_union(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
+
+			for(int iter=0; iter<candiVector.size(); iter++)
 			{
-				
+				int i = candiVector[iter];
 				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
 					continue;
-				if(tiles[i].right == tiles[rightId].left && tiles[i].top == tiles[squareIds[relativeId]].bottom)
-				{
-					found = true;
-					posAns[pos] = i;
-					usedTiles.insert(i);
-					triedPos[pos].insert(i);
-					break;
-				}
+				
+				found = true;
+				posAns[pos] = i;
+				usedTiles.insert(i);
+				triedPos[pos].insert(i);
+				break;
+				
 			}
 		}
 
@@ -967,77 +989,87 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 	{
 		if(pos == 0)
 		{
-			for(int i=0; i<size; i++)
+			vector<int> candiVector = validEdges[to_string(squareIds[pos])+"R-L"];
+			for(int iter=0; iter<candiVector.size(); iter++)
 			{
-				
+				int i = candiVector[iter];
 				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
 					continue;
-				if(tiles[i].right == tiles[pos].left)
-				{
-					found = true;
-					posAns[pos] = i;
-					usedTiles.insert(i);
-					triedPos[pos].insert(i);
-					//cout<<"put "<<i<<" at pos "<<pos<<endl;
-					break;
-				}
+				
+				found = true;
+				posAns[pos] = i;
+				usedTiles.insert(i);
+				triedPos[pos].insert(i);
+				//cout<<"put "<<i<<" at pos "<<pos<<endl;
+				break;
+				
 			}
 		}
 		else if(pos>0 && pos<theSquareSize)
 		{
 			int topId = posAns[pos-1];
 			int relativeId = squareIds[pos*theSquareSize];
-			for(int i=0; i<size; i++)
+			vector<int> v1 = validEdges[to_string(topId)+"T-B"];
+			vector<int> v2 = validEdges[to_string(relativeId)+"R-L"];
+			vector<int> candiVector;
+			sort(v1.begin(),v1.end());   
+			sort(v2.begin(),v2.end());   
+			set_union(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
+			for(int iter=0; iter<candiVector.size(); iter++)
 			{
-				
+				int i = candiVector[iter];
 				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
 					continue;
-				if(tiles[i].right == tiles[relativeId].left && tiles[i].top == tiles[topId].bottom)
-				{
-					found = true;
-					posAns[pos] = i;
-					usedTiles.insert(i);
-					triedPos[pos].insert(i);
-					break;
-				}
+				
+				found = true;
+				posAns[pos] = i;
+				usedTiles.insert(i);
+				triedPos[pos].insert(i);
+				break;
+				
 			}
 
 		}
 		else if(pos == theSquareSize)
 		{
 			int topId = posAns[pos-1];
-			for(int i=0; i<size; i++)
+			vector<int> candiVector = validEdges[to_string(topId)+"T-B"];
+			for(int iter=0; iter<candiVector.size(); iter++)
 			{
-				
+				int i = candiVector[iter];
 				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
 					continue;
-				if(tiles[i].top == tiles[topId].bottom)
-				{
-					found = true;
-					posAns[pos] = i;
-					usedTiles.insert(i);
-					triedPos[pos].insert(i);
-					break;
-				}
+				
+				found = true;
+				posAns[pos] = i;
+				usedTiles.insert(i);
+				triedPos[pos].insert(i);
+				break;
+				
 			}
 		}
 		else if(pos<2*theSquareSize+1)
 		{
 			int leftId = posAns[pos-1];
-			int relativeId = (theSquareSize-1)*theSquareSize+pos-theSquareSize-1;
-			for(int i=0; i<size; i++)
+			int relativeId = squareIds[(theSquareSize-1)*theSquareSize+pos-theSquareSize-1];
+			vector<int> v1 = validEdges[to_string(leftId)+"L-R"];
+			vector<int> v2 = validEdges[to_string(relativeId)+"T-B"];
+			vector<int> candiVector;
+			sort(v1.begin(),v1.end());   
+			sort(v2.begin(),v2.end());   
+			set_union(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
+			for(int iter=0; iter<candiVector.size(); iter++)
 			{
-				
+				int i = candiVector[iter];
 				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
 					continue;
-				if(tiles[i].left == tiles[leftId].right && tiles[i].top == tiles[squareIds[relativeId]].bottom)
-				{
-					found = true;
-					posAns[pos] = i;
-					usedTiles.insert(i);
-					triedPos[pos].insert(i);
-					break;
-				}
+				
+				found = true;
+				posAns[pos] = i;
+				usedTiles.insert(i);
+				triedPos[pos].insert(i);
+				break;
+				
 			}
 		}
 		if(found)
@@ -1130,77 +1162,87 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 		if(pos == 0)
 		{
 			int relativeId = squareIds[theSquareSize-1-pos];
-			for(int i=0; i<size; i++)
+			vector<int> candiVector = validEdges[to_string(relativeId)+"B-T"];
+			for(int iter=0; iter<candiVector.size(); iter++)
 			{
-				
+				int i = candiVector[iter];
 				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
 					continue;
-				if(tiles[i].bottom == tiles[relativeId].top)
-				{
-					found = true;
-					posAns[pos] = i;
-					usedTiles.insert(i);
-					triedPos[pos].insert(i);
-					//cout<<"put "<<i<<" at pos "<<pos<<endl;
-					break;
-				}
+				
+				found = true;
+				posAns[pos] = i;
+				usedTiles.insert(i);
+				triedPos[pos].insert(i);
+				//cout<<"put "<<i<<" at pos "<<pos<<endl;
+				break;
+				
 			}
 		}
 		else if(pos>0 && pos<theSquareSize)
 		{
 			int rightId = posAns[pos-1];
 			int relativeId = squareIds[theSquareSize-1-pos];
-			for(int i=0; i<size; i++)
+			vector<int> v1 = validEdges[to_string(rightId)+"R-L"];
+			vector<int> v2 = validEdges[to_string(relativeId)+"B-T"];
+			vector<int> candiVector;
+			sort(v1.begin(),v1.end());   
+			sort(v2.begin(),v2.end());   
+			set_union(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
+			for(int iter=0; iter<candiVector.size(); iter++)
 			{
-				
+				int i = candiVector[iter];
 				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
 					continue;
-				if(tiles[i].bottom == tiles[relativeId].top && tiles[i].right == tiles[rightId].left)
-				{
-					found = true;
-					posAns[pos] = i;
-					usedTiles.insert(i);
-					triedPos[pos].insert(i);
-					break;
-				}
+				
+				found = true;
+				posAns[pos] = i;
+				usedTiles.insert(i);
+				triedPos[pos].insert(i);
+				break;
+				
 			}
 
 		}
 		else if(pos == theSquareSize)
 		{
 			int rightId = posAns[pos-1];
-			for(int i=0; i<size; i++)
+			vector<int> candiVector = validEdges[to_string(rightId)+"R-L"];
+			for(int iter=0; iter<candiVector.size(); iter++)
 			{
-				
+				int i = candiVector[iter];
 				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
 					continue;
-				if(tiles[i].right == tiles[rightId].left)
-				{
-					found = true;
-					posAns[pos] = i;
-					usedTiles.insert(i);
-					triedPos[pos].insert(i);
-					break;
-				}
+				
+				found = true;
+				posAns[pos] = i;
+				usedTiles.insert(i);
+				triedPos[pos].insert(i);
+				break;
+				
 			}
 		}
 		else if(pos<2*theSquareSize+1)
 		{
 			int topId = posAns[pos-1];
-			int relativeId = (pos-theSquareSize-1)*theSquareSize;
-			for(int i=0; i<size; i++)
+			int relativeId = squareIds[(pos-theSquareSize-1)*theSquareSize];
+			vector<int> v1 = validEdges[to_string(topId)+"T-B"];
+			vector<int> v2 = validEdges[to_string(relativeId)+"R-L"];
+			vector<int> candiVector;
+			sort(v1.begin(),v1.end());   
+			sort(v2.begin(),v2.end());   
+			set_union(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
+			for(int iter=0; iter<candiVector.size(); iter++)
 			{
-				
+				int i = candiVector[iter];
 				if(usedTiles.count(i) == 1 || triedPos[pos].count(i) == 1)
 					continue;
-				if(tiles[i].top == tiles[topId].bottom && tiles[i].right == tiles[squareIds[relativeId]].left)
-				{
-					found = true;
-					posAns[pos] = i;
-					usedTiles.insert(i);
-					triedPos[pos].insert(i);
-					break;
-				}
+				
+				found = true;
+				posAns[pos] = i;
+				usedTiles.insert(i);
+				triedPos[pos].insert(i);
+				break;
+				
 			}
 		}
 
