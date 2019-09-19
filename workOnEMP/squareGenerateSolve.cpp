@@ -14,12 +14,13 @@
 #include <functional>
 #include <fstream>
 #include <sys/time.h>
+#include <algorithm>
 using namespace std;
 
-#define POOL 24
+#define POOL 50
 
-string inFileName = "data/9*9_1";
-string outFileName = "result/9*9_1_24threads_1";
+string inFileName = "data/10*10_1";
+string outFileName = "result/10*10_1_50threads";
 
 typedef struct
 {
@@ -94,9 +95,9 @@ vector<string> squareVector;
 map<string,map<int,int> > allEdges;
 map<string,vector<int> > validEdges;
 
-int size = 81;
-int width = 9;
-Tile tiles[81];
+int size = 100;
+int width = 10;
+Tile tiles[100];
 map<string,int> edgeVote;
 set<string> invalidEdges;
 int* answer;
