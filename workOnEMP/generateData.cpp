@@ -11,21 +11,22 @@ struct tile
 int main()
 {
 	long seed = time(NULL);
-	int size = 10;
+	int size = 9;
+	int totalColor = 10;
 	tile data[size][size];
 	for(int i=0;i<size;i++)
 		for(int j=0;j<size;j++)
 		{
 			tile T;
 			srand(seed);
-			T.right = rand()%10;
-			T.bottom = rand()%10;
+			T.right = rand()%totalColor;
+			T.bottom = rand()%totalColor;
 			seed = rand();
 			
 			if(j==0)
 			{
 				srand(seed);
-				T.left = rand()%10;
+				T.left = rand()%totalColor;
 				seed = rand();
 			}
 			else
@@ -35,7 +36,7 @@ int main()
 			if(i==0)
 			{
 				srand(seed);
-				T.top = rand()%10;
+				T.top = rand()%totalColor;
 				seed = rand();
 			}
 			else
@@ -65,7 +66,7 @@ int main()
 		for(int j=0;j<size;j++)
 		{
 			tile T = data[i][j];
-			cout<<T.top<<T.right<<T.bottom<<T.left<<" ";
+			cout<<T.top<<"-"<<T.right<<"-"<<T.bottom<<"-"<<T.left<<" ";
 		}
 		cout<<endl;
 	}

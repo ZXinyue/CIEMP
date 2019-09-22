@@ -17,10 +17,10 @@
 #include <algorithm>
 using namespace std;
 
-#define POOL 50
+#define POOL 500
 
-string inFileName = "data/10*10_1";
-string outFileName = "result/10*10_1_50threads";
+string inFileName = "data/9*9_c10_1";
+string outFileName = "result/9*9_c10_1_500thread";
 
 typedef struct
 {
@@ -95,9 +95,9 @@ vector<string> squareVector;
 map<string,map<int,int> > allEdges;
 map<string,vector<int> > validEdges;
 
-int size = 100;
-int width = 10;
-Tile tiles[100];
+int size = 81;
+int width = 9;
+Tile tiles[81];
 map<string,int> edgeVote;
 set<string> invalidEdges;
 int* answer;
@@ -106,7 +106,7 @@ void* searchAnswer(void *id);
 
 void* justTest(void *id);
 
-int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> &usedTiles, vector< set<int> > &triedPos, vector<int> &posAns,int direction,string originKey);
+int searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> &usedTiles, vector< set<int> > &triedPos, vector<int> &posAns,int direction,string originKey);
 
 //pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -144,17 +144,21 @@ int main()
 	{
 		string s;
 		input>>s;
+		vector<string> colors;
+		superSplit(s,colors,"-");
+
 		tiles[i].id = i;
-		tiles[i].top = s[0];
-		tiles[i].right = s[1];
-		tiles[i].bottom = s[2];
-		tiles[i].left = s[3];
+		tiles[i].top = colors[0];
+		tiles[i].right = colors[1];
+		tiles[i].bottom = colors[2];
+		tiles[i].left = colors[3];
 
 		string vs = to_string(i);
-		squareInfo si = {s,0,false,false,false,false};
-		squareMap[s] = si;
+		squareInfo si = {vs,0,false,false,false,false};
+		squareMap[vs] = si;
 		squareVector.push_back(vs);
 	}
+
 
 	input.close();
 
@@ -233,15 +237,18 @@ int main()
 				map<int,int> topRightValidMap = allEdges[s2];
 				map<int,int>::iterator tlvm, trvm;
 				tlvm = topLeftValidMap.begin();
-				trvm = topRightValidMap.begin();
+				
 				while(tlvm != topLeftValidMap.end())
 				{
 					int topLeftId = tlvm->first;
+					trvm = topRightValidMap.begin();
 					while(trvm!= topRightValidMap.end())
 					{
 						int topRightId = trvm->first;
+						
 						if(tiles[topLeftId].right == tiles[topRightId].left)
 						{
+							
 							certiValid = true;
 							allEdges[tempS][theRightId] = 1;
 							tempS1 = to_string(theRightId)+"R-L";
@@ -272,10 +279,11 @@ int main()
 				map<int,int> bottomRightValidMap = allEdges[s2];
 				map<int,int>::iterator blvm, brvm;
 				blvm = bottomLeftValidMap.begin();
-				brvm = bottomRightValidMap.begin();
+				
 				while(blvm != bottomLeftValidMap.end())
 				{
 					int bottomLeftId = blvm->first;
+					brvm = bottomRightValidMap.begin();
 					while(brvm!= bottomRightValidMap.end())
 					{
 						int bottomRightId = brvm->first;
@@ -325,10 +333,11 @@ int main()
 				map<int,int> rightBottomValidMap = allEdges[s2];
 				map<int,int>::iterator rtvm, rbvm;
 				rtvm = rightTopValidMap.begin();
-				rbvm = rightBottomValidMap.begin();
+				
 				while(rtvm != rightTopValidMap.end())
 				{
 					int rightTopId = rtvm->first;
+					rbvm = rightBottomValidMap.begin();
 					while(rbvm!= rightBottomValidMap.end())
 					{
 						int rightBottomId = rbvm->first;
@@ -363,10 +372,11 @@ int main()
 				map<int,int> leftBottomValidMap = allEdges[s2];
 				map<int,int>::iterator ltvm, lbvm;
 				ltvm = leftTopValidMap.begin();
-				lbvm = leftBottomValidMap.begin();
+				
 				while(ltvm != leftTopValidMap.end())
 				{
 					int leftTopId = ltvm->first;
+					lbvm = leftBottomValidMap.begin();
 					while(lbvm!= leftBottomValidMap.end())
 					{
 						int leftBottomId = lbvm->first;
@@ -411,6 +421,7 @@ int main()
 	while(it1 != allEdges.end())
 	{
 		string tempS = it1->first;
+		//cout<<"key:"<<tempS<<endl;
 		map<int,int> tempMap = it1->second;
 		map<int,int> :: iterator it2;
 		it2 = tempMap.begin();
@@ -420,17 +431,20 @@ int main()
 			if(it2->second != 0)
 			{
 				tempVec.push_back(it2->first);
+				//cout<<"value:"<<it2->first<<" ";
 				validEdgeCount+=1;
 			}
+			// else
+			// 	cout<<"wrong value:"<<tempS<<":"<<it2->first<<" "<<it2->second<<endl;
 			it2++;
 		}
+		//cout<<endl;
 		//set<int> tempSet(tempVec.begin(),tempVec.end());
 		validEdges[tempS] = tempVec;
 		it1++;
 	}
 
-	cout<<"validEdges:"<<validEdgeCount<<endl;
-
+	cout<<"valid edge count:"<<validEdgeCount<<endl;
 
 
 	// map<string,int>::iterator iter;
@@ -484,8 +498,23 @@ int main()
 		for(int j=0; j<size; j++)
 		{
 			cout<<answer[j]<<" ";
+			//cout<<answer[j]<<":"<<tiles[answer[j]].top<<"-"<<tiles[answer[j]].right<<"-"<<tiles[answer[j]].bottom<<"-"<<tiles[answer[j]].left<<" ";
 		}
 		cout<<endl;
+		for(int j=0; j<size ;j++)
+		{
+			if((j+1)%width!=0)
+			{
+				if(tiles[answer[j]].right!=tiles[answer[j+1]].left)
+					cout<<"error l-r:"<<answer[j]<<" "<<answer[j+1]<<endl;
+			}
+			if(j<width*(width-1))
+			{
+				if(tiles[answer[j]].bottom!=tiles[answer[j+width]].top)
+					cout<<"error t-b:"<<answer[j]<<" "<<answer[j+width]<<endl;
+			}
+		}
+
 	}
 
 	// for(int i=0;i<squareVector.size();i++)
@@ -525,30 +554,46 @@ void* searchAnswer(void *id)
 	while(answer[0]==-1)
 	{
 		string randomStart = "";
-		while(randomStart=="") //随机选取一个碎块作为扩展的起始
+		bool ffoundFlag = false;
+		string vs;
+		int randomNumber;
+		pthread_mutex_lock(&mutex1);
+		while(!ffoundFlag) //随机选取一个碎块作为扩展的起始
 		{
 			srand(seed);
-			int randomNumber = rand()%squareVector.size();
+			randomNumber = rand()%squareVector.size();
 			seed = rand();
-			string vs = squareVector[randomNumber];
+			vs = squareVector[randomNumber];
 			if(squareMap[vs].tryTime!=4)
 			{
 				randomStart = vs;
-				break;
+				ffoundFlag = true;
 			}
-		}		
+		}
+		pthread_mutex_unlock(&mutex1);
+		//randomStart = squareVector[randomNumber];
+		// if(!randomStart)
+		// 	cout<<"fxxk"<<endl;		
 		//cout<<"start with:"<<randomStart<<endl;
 		vector<string> splitResult;
 		set<int> usedTiles;
 		vector<int> squareIds;
 		superSplit(randomStart,splitResult,"-");
-
+		if(splitResult.size()==0)
+		{
+			cout<<"randomStart:"<<randomStart<<endl;
+			cout<<"vs:"<<vs<<endl;
+			cout<<"randomNumber:"<<randomNumber<<endl;
+			cout<<"squ[i]:"<<squareVector[randomNumber]<<endl;
+		}
+	
 		for(int i=0;i<splitResult.size();i++)
 		{
 			//cout<<"superSplit:"<<splitResult[i]<<endl;
 			usedTiles.insert(stoi(splitResult[i]));
 			squareIds.push_back(stoi(splitResult[i]));
 		}
+		
 
 		int theSqSize = sqrt(squareIds.size());
 
@@ -568,9 +613,7 @@ void* searchAnswer(void *id)
 			
 			while(finish!=2)
 			{
-				int *pfinish = searchPosition(POS,theSqSize,squareIds,usedTiles,triedPos,posAns,0,randomStart);
-				finish = *pfinish;
-				delete pfinish;
+				finish = searchPosition(POS,theSqSize,squareIds,usedTiles,triedPos,posAns,0,randomStart);
 				if(finish == 1)
 					POS+=1;
 				else if(finish == 0)
@@ -584,9 +627,7 @@ void* searchAnswer(void *id)
 		{
 			while(finish!=2)
 			{
-				int *pfinish = searchPosition(POS,theSqSize,squareIds,usedTiles,triedPos,posAns,1,randomStart);
-				finish = *pfinish;
-				delete pfinish;
+				finish = searchPosition(POS,theSqSize,squareIds,usedTiles,triedPos,posAns,1,randomStart);
 				if(finish == 1)
 					POS+=1;
 				else if(finish == 0)
@@ -599,9 +640,7 @@ void* searchAnswer(void *id)
 		{
 			while(finish!=2)
 			{
-				int *pfinish = searchPosition(POS,theSqSize,squareIds,usedTiles,triedPos,posAns,2,randomStart);
-				finish = *pfinish;
-				delete pfinish;
+				finish = searchPosition(POS,theSqSize,squareIds,usedTiles,triedPos,posAns,2,randomStart);
 				if(finish == 1)
 					POS+=1;
 				else if(finish == 0)
@@ -614,9 +653,7 @@ void* searchAnswer(void *id)
 		{
 			while(finish!=2)
 			{
-				int *pfinish = searchPosition(POS,theSqSize,squareIds,usedTiles,triedPos,posAns,3,randomStart);
-				finish = *pfinish;
-				delete pfinish;
+				finish = searchPosition(POS,theSqSize,squareIds,usedTiles,triedPos,posAns,3,randomStart);
 				if(finish == 1)
 					POS+=1;
 				else if(finish == 0)
@@ -630,7 +667,7 @@ void* searchAnswer(void *id)
 	return NULL;
 }
 //0:failed 1:success 2:finish
-int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> &usedTiles, vector< set<int> > &triedPos, vector<int> &posAns,int direction,string originKey)
+int searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> &usedTiles, vector< set<int> > &triedPos, vector<int> &posAns,int direction,string originKey)
 {
 	for(int i=pos+1; i<2*theSquareSize+1; i++)
 	{
@@ -654,7 +691,6 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 				usedTiles.insert(i);
 				triedPos[pos].insert(i);
 				break;
-				
 			}
 		}
 		else if(pos>0 && pos<theSquareSize)
@@ -665,7 +701,7 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 			vector<int> candiVector;
 			sort(v1.begin(),v1.end());   
 			sort(v2.begin(),v2.end());   
-			set_union(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
+			set_intersection(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
 			for(int iter=0; iter<candiVector.size(); iter++)
 			{
 				
@@ -704,13 +740,13 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 		else if(pos<2*theSquareSize+1)
 		{
 			int topId = posAns[pos-1];
-			int relativeId = (pos-theSquareSize-1)*theSquareSize+theSquareSize-1;
+			int relativeId = squareIds[(pos-theSquareSize-1)*theSquareSize+theSquareSize-1];
 			vector<int> v1 = validEdges[to_string(topId)+"T-B"];
-			vector<int> v2 = validEdges[to_string(squareIds[relativeId])+"L-R"];
+			vector<int> v2 = validEdges[to_string(relativeId)+"L-R"];
 			vector<int> candiVector;
 			sort(v1.begin(),v1.end());   
 			sort(v2.begin(),v2.end());   
-			set_union(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
+			set_intersection(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
 			for(int iter=0; iter<candiVector.size(); iter++)
 			{
 				int i = candiVector[iter];
@@ -733,8 +769,9 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 			if(pos<2*theSquareSize) 
 			{
 				//returnStatus = 1;
-				int *pRe = new int(1);
-				return pRe;
+				//int *pRe = new int(1);
+				//return pRe;
+				return 1;
 				//searchPosition(pos+1,theSquareSize,squareIds,usedTiles,triedPos,posAns,0,originKey);
 			}
 			else if(pos == 2*theSquareSize) 
@@ -776,8 +813,9 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 					}
 					pthread_mutex_unlock(&mutex1);
 					//returnStatus = 2;
-					int *pRe = new int(2);
-					return pRe;
+					// int *pRe = new int(2);
+					// return pRe;
+					return 2;
 					// return NULL;
 				}
 
@@ -794,8 +832,9 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 				usedTiles.erase(preId);
 				posAns[pos-1]=-1;
 				//returnStatus = 0;
-				int *pRe = new int(0);
-				return pRe;
+				// int *pRe = new int(0);
+				// return pRe;
+				return 0;
 				// searchPosition(pos-1,theSquareSize,squareIds,usedTiles,triedPos,posAns,0,originKey);
 			}
 			else
@@ -806,8 +845,9 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 				pthread_mutex_unlock(&mutex1);
 				//return NULL;
 				//returnStatus = 2;
-				int *pRe = new int(2);
-				return pRe;
+				// int *pRe = new int(2);
+				// return pRe;
+				return 2;
 			}
 			
 		}
@@ -842,7 +882,7 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 			vector<int> candiVector;
 			sort(v1.begin(),v1.end());   
 			sort(v2.begin(),v2.end());   
-			set_union(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
+			set_intersection(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
 
 			for(int iter=0; iter<candiVector.size(); iter++)
 			{
@@ -886,7 +926,7 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 			vector<int> candiVector;
 			sort(v1.begin(),v1.end());   
 			sort(v2.begin(),v2.end());   
-			set_union(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
+			set_intersection(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
 
 			for(int iter=0; iter<candiVector.size(); iter++)
 			{
@@ -909,8 +949,9 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 			if(pos<2*theSquareSize)
 			{
 				//returnStatus = 1;
-				int *pRe = new int(1);
-				return pRe;
+				// int *pRe = new int(1);
+				// return pRe;
+				return 1;
 				//searchPosition(pos+1,theSquareSize,squareIds,usedTiles,triedPos,posAns,1,originKey);
 			}
 			else if(pos == 2*theSquareSize)
@@ -951,8 +992,9 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 					pthread_mutex_unlock(&mutex1);
 					//return NULL;
 					//returnStatus = 2;
-					int *pRe = new int(2);
-					return pRe;
+					// int *pRe = new int(2);
+					// return pRe;
+					return 2;
 				}
 
 				found = false;
@@ -968,8 +1010,9 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 				usedTiles.erase(preId);
 				posAns[pos-1]=-1;
 				//returnStatus = 0;
-				int *pRe = new int(0);
-				return pRe;
+				// int *pRe = new int(0);
+				// return pRe;
+				return 0;
 				//searchPosition(pos-1,theSquareSize,squareIds,usedTiles,triedPos,posAns,1,originKey);
 			}
 			else
@@ -980,8 +1023,9 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 				pthread_mutex_unlock(&mutex1);
 				//return NULL;
 				//returnStatus = 2;
-				int *pRe = new int(2);
-				return pRe;
+				// int *pRe = new int(2);
+				// return pRe;
+				return 2;
 			}
 			
 		}
@@ -1015,7 +1059,7 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 			vector<int> candiVector;
 			sort(v1.begin(),v1.end());   
 			sort(v2.begin(),v2.end());   
-			set_union(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
+			set_intersection(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
 			for(int iter=0; iter<candiVector.size(); iter++)
 			{
 				int i = candiVector[iter];
@@ -1058,7 +1102,7 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 			vector<int> candiVector;
 			sort(v1.begin(),v1.end());   
 			sort(v2.begin(),v2.end());   
-			set_union(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
+			set_intersection(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
 			for(int iter=0; iter<candiVector.size(); iter++)
 			{
 				int i = candiVector[iter];
@@ -1079,8 +1123,9 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 			if(pos<2*theSquareSize)
 			{
 				//returnStatus = 1;
-				int *pRe = new int(1);
-				return pRe;
+				// int *pRe = new int(1);
+				// return pRe;
+				return 1;
 				//searchPosition(pos+1,theSquareSize,squareIds,usedTiles,triedPos,posAns,2,originKey);
 			}
 			else if(pos == 2*theSquareSize)
@@ -1122,8 +1167,9 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 					pthread_mutex_unlock(&mutex1);
 					//return NULL;
 					//returnStatus = 2;
-					int *pRe = new int(2);
-					return pRe;
+					// int *pRe = new int(2);
+					// return pRe;
+					return 2;
 				}
 
 				found = false;
@@ -1140,8 +1186,9 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 				posAns[pos-1]=-1;
 				//searchPosition(pos-1,theSquareSize,squareIds,usedTiles,triedPos,posAns,2,originKey);
 				//returnStatus = 0;
-				int *pRe = new int(0);
-				return pRe;
+				// int *pRe = new int(0);
+				// return pRe;
+				return 0;
 			}
 			else
 			{
@@ -1151,8 +1198,9 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 				pthread_mutex_unlock(&mutex1);
 				//return NULL;
 				//returnStatus = 2;
-				int *pRe = new int(2);
-				return pRe;
+				// int *pRe = new int(2);
+				// return pRe;
+				return 2;
 			}
 			
 		}
@@ -1188,7 +1236,7 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 			vector<int> candiVector;
 			sort(v1.begin(),v1.end());   
 			sort(v2.begin(),v2.end());   
-			set_union(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
+			set_intersection(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
 			for(int iter=0; iter<candiVector.size(); iter++)
 			{
 				int i = candiVector[iter];
@@ -1231,7 +1279,7 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 			vector<int> candiVector;
 			sort(v1.begin(),v1.end());   
 			sort(v2.begin(),v2.end());   
-			set_union(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
+			set_intersection(v1.begin(),v1.end(),v2.begin(),v2.end(),back_inserter(candiVector));//求交集
 			for(int iter=0; iter<candiVector.size(); iter++)
 			{
 				int i = candiVector[iter];
@@ -1253,8 +1301,9 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 			if(pos<2*theSquareSize)
 			{
 				//returnStatus = 1;
-				int *pRe = new int(1);
-				return pRe;
+				// int *pRe = new int(1);
+				// return pRe;
+				return 1;
 				//searchPosition(pos+1,theSquareSize,squareIds,usedTiles,triedPos,posAns,3,originKey);
 			}
 			else if(pos == 2*theSquareSize)
@@ -1297,8 +1346,9 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 					pthread_mutex_unlock(&mutex1);
 					//return NULL;
 					//returnStatus = 2;
-					int *pRe = new int(2);
-					return pRe;
+					// int *pRe = new int(2);
+					// return pRe;
+					return 2;
 				}
 
 				found = false;
@@ -1315,8 +1365,9 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 				posAns[pos-1]=-1;
 				//searchPosition(pos-1,theSquareSize,squareIds,usedTiles,triedPos,posAns,3,originKey);
 				//returnStatus = 0;
-				int *pRe = new int(0);
-				return pRe;
+				// int *pRe = new int(0);
+				// return pRe;
+				return 0;
 			}
 			else
 			{
@@ -1326,8 +1377,9 @@ int* searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> 
 				pthread_mutex_unlock(&mutex1);
 				//return NULL;
 				//returnStatus = 2;
-				int *pRe = new int(2);
-				return pRe;
+				// int *pRe = new int(2);
+				// return pRe;
+				return 2;
 			}
 			
 		}
