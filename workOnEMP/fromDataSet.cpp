@@ -18,10 +18,11 @@
 using namespace std;
 
 #define POOL 1000
-#define TIMEOUT 600
+#define TIMEOUT 300
 
 string inFileName = "data/10*10_c10_3";
-string outFileName = "result/1007/10*10_c10_3_1000thread_all_3";
+string outFileName = "result/1007/fds_10*10_c10_3_1000thread_3";
+string dataSetName = "dataset/10*10_c10_3_size8_4";
 
 typedef struct
 {
@@ -83,8 +84,8 @@ struct deadEdge
 struct squareInfo
 {
 	string s; //square tiles ID
-	int tryTime;
-	bool picked; 
+	int tryTime; 
+	bool picked;
 	bool d0; 
 	bool d1;
 	bool d2;
@@ -104,7 +105,6 @@ struct myComp
 map<string,squareInfo> squareMap;
 vector<string> squareVector;
 multiset<string,myComp> squareSet;
-map<int,vector<string> > squareSizeMap;
 
 map<string,map<int,int> > allEdges;
 map<string,vector<int> > validEdges;
@@ -154,12 +154,6 @@ int main()
 	//start = clock();
 	gettimeofday( &t_start, NULL);
 
-	for(int i=1; i<width; i++)
-	{
-		vector<string> emptyVec;
-		squareSizeMap[i] = emptyVec;
-	}
-
 	ifstream input;
 	input.open(inFileName);
 
@@ -176,18 +170,23 @@ int main()
 		tiles[i].right = colors[1];
 		tiles[i].bottom = colors[2];
 		tiles[i].left = colors[3];
-
-		string vs = to_string(i);
-		squareInfo si = {vs,0,false,false,false,false,false};
-		squareMap[vs] = si;
-		squareVector.push_back(vs);
-		squareSet.insert(vs);
-		squareSizeMap[1].push_back(vs);
 	}
-
 
 	input.close();
 
+	input.open(dataSetName);
+	while(1)
+	{
+		string s;
+		input>>s;
+		if(s=="-1")
+			break;
+		squareInfo tempInfo = {s,0,false,false,false,false,false};
+		squareMap[s] = tempInfo;
+		squareVector.push_back(s);
+		squareSet.insert(s);	
+	}
+	input.close();
 
 	//存储所有边
     int allEdgeCount = 0;
@@ -575,7 +574,7 @@ int main()
 		multiset<string,myComp>::iterator setit = squareSet.begin();
 		while(setit != squareSet.end())
 		{
-		    output<<*setit<<endl;
+		    output<<*setit<<" "<<squareMap[*setit].tryTime<<" "<<squareMap[*setit].d0<<" "<<squareMap[*setit].d1<<" "<<squareMap[*setit].d2<<" "<<squareMap[*setit].d3<<" "<<squareMap[*setit].picked<<endl;
 		    setit++;
 		}
 	}
@@ -616,82 +615,31 @@ void* searchAnswer(void *id)
 		string vs;
 		int randomNumber;
 		
+		
+		
 		pthread_mutex_lock(&mutex1);
-		if(*(int*)id % 2 == 0 || *(int*)id % 2 == 1) //1/2
+		multiset<string,myComp>::iterator setit = squareSet.begin();
+		while(setit != squareSet.end())  //按从大到小的顺序选取
 		{
-			
-			while(!ffoundFlag) //随机选取一个碎块作为扩展的起始
+			if(!squareMap[*setit].picked)
 			{
-				srand(seed);
-				randomNumber = rand()%squareVector.size();
-				seed = rand();
-				vs = squareVector[randomNumber];
-				if(!squareMap[vs].picked)
-				{
-					randomStart = vs;
-					ffoundFlag = true;
-					squareMap[vs].picked = true;
-				}
+				randomStart = *setit;
+				ffoundFlag = true;
+				squareMap[*setit].picked = true;
+				break;
 			}
-			
-		}
-		else
-		{
-			if(*(int*)id % 8 == 0) //1/10按从大到小的顺序选取
-			{
-				multiset<string,myComp>::iterator setit = squareSet.begin();
-				while(setit != squareSet.end())  
-				{
-					if(!squareMap[*setit].picked)
-					{
-						randomStart = *setit;
-						squareMap[*setit].picked = true;
-						break;
-					}
-					setit++;
-				}
-			}
-			else
-			{
-				int yu = *(int*)id % (width-1) + 1;
-				int max_time = squareSizeMap[yu].size();
-				if(squareSizeMap[yu].size()>1)
-				{
-					while(!ffoundFlag && max_time--) 
-					{
-						srand(seed);
-						randomNumber = rand()%squareSizeMap[yu].size();
-						seed = rand();
-						vs = squareSizeMap[yu][randomNumber];
-						if(!squareMap[vs].picked)
-						{
-							randomStart = vs;
-							ffoundFlag = true;
-							squareMap[vs].picked = true;
-						}
-					}
-				}
-				
-				if(!ffoundFlag)
-				{
-					while(!ffoundFlag) //随机选取一个碎块作为扩展的起始
-					{
-						srand(seed);
-						randomNumber = rand()%squareVector.size();
-						seed = rand();
-						vs = squareVector[randomNumber];
-						if(!squareMap[vs].picked)
-						{
-							randomStart = vs;
-							ffoundFlag = true;
-							squareMap[vs].picked = true;
-						}
-					}
-				}
-			}			
+			setit++;
 		}
 		pthread_mutex_unlock(&mutex1);
 		
+		if(!ffoundFlag)
+		{
+			cout<<"over"<<endl;
+			pthread_mutex_lock(&mutex1);
+			timeOut = true;
+			pthread_mutex_unlock(&mutex1);
+			break;
+		}
 	
 		//randomStart = squareVector[randomNumber];
 		// if(!randomStart)
@@ -952,7 +900,6 @@ int searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> &
 					squareMap[key] = tempInfo;
 					squareVector.push_back(key);
 					squareSet.insert(key);
-					squareSizeMap[theSquareSize+1].push_back(key);
 					pthread_mutex_unlock(&mutex1);
 				}
 
@@ -1134,7 +1081,6 @@ int searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> &
 					squareMap[key] = tempInfo;
 					squareVector.push_back(key);
 					squareSet.insert(key);
-					squareSizeMap[theSquareSize+1].push_back(key);
 					pthread_mutex_unlock(&mutex1);
 				}
 
@@ -1310,7 +1256,6 @@ int searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> &
 					squareInfo tempInfo = {key,0,false,false,false,false,false};
 					squareMap[key] = tempInfo;
 					squareVector.push_back(key);
-					squareSizeMap[theSquareSize+1].push_back(key);
 					squareSet.insert(key);
 					pthread_mutex_unlock(&mutex1);
 				}
@@ -1492,7 +1437,6 @@ int searchPosition(int pos, int theSquareSize, vector<int> squareIds, set<int> &
 					squareMap[key] = tempInfo;
 					squareVector.push_back(key);
 					squareSet.insert(key);
-					squareSizeMap[theSquareSize+1].push_back(key);
 					pthread_mutex_unlock(&mutex1);
 				}
 
