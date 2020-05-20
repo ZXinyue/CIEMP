@@ -12,6 +12,7 @@
 #include <vector>
 #include <set>
 #include <functional>
+#include <algorithm>
 using namespace std;
 
 #define POOL 40
